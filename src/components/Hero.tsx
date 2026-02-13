@@ -45,17 +45,29 @@ const Hero = () => {
               href="https://calendly.com/ben-qsva/30min"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center px-7 py-3.5 rounded-md bg-primary text-primary-foreground font-medium text-sm hover:bg-foreground/90 transition-colors"
+              className="inline-flex items-center px-7 py-3.5 rounded-md bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors"
             >
               Talk to the QSVA Team
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="ml-2">
                 <path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </a>
-            <span className="text-sm text-muted-foreground italic self-center">
-              Now working with select design partners
-            </span>
+            <a
+              href="#waitlist"
+              onClick={(e) => { e.preventDefault(); document.querySelector('#waitlist')?.scrollIntoView({ behavior: 'smooth' }); }}
+              className="inline-flex items-center px-7 py-3.5 rounded-md border border-input text-foreground font-medium text-sm hover:bg-accent transition-colors"
+            >
+              Join the Waitlist
+            </a>
           </motion.div>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.8 }}
+            className="text-sm text-muted-foreground mt-2"
+          >
+            Now working with select design partners
+          </motion.p>
         </div>
       </div>
 

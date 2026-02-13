@@ -6,18 +6,29 @@ const navLinks = [
   { label: "Built For", href: "#built-for" },
   { label: "About", href: "#about" },
   { label: "Team", href: "#team" },
+  { label: "Waitlist", href: "#waitlist" },
 ];
 
-const QSVALogo = ({ className = "" }: { className?: string }) => (
-  <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+const QSVALogo = ({ className = "", size = 32 }: { className?: string; size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
     {/* Outer hexagon */}
-    <polygon points="50,5 90,27.5 90,72.5 50,95 10,72.5 10,27.5" stroke="currentColor" strokeWidth="2.5" fill="none" />
-    {/* Inner hexagon */}
-    <polygon points="50,22 73,36 73,64 50,78 27,64 27,36" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.6" />
-    {/* Center lines connecting inner to outer - cube effect */}
-    <line x1="50" y1="5" x2="50" y2="22" stroke="currentColor" strokeWidth="1.5" opacity="0.6" />
-    <line x1="90" y1="72.5" x2="73" y2="64" stroke="currentColor" strokeWidth="1.5" opacity="0.6" />
-    <line x1="10" y1="72.5" x2="27" y2="64" stroke="currentColor" strokeWidth="1.5" opacity="0.6" />
+    <polygon points="50,3 93,28 93,72 50,97 7,72 7,28" stroke="currentColor" strokeWidth="2" fill="none" />
+    {/* Top inner triangle */}
+    <line x1="50" y1="3" x2="50" y2="38" stroke="currentColor" strokeWidth="1.5" />
+    <line x1="50" y1="3" x2="27" y2="55" stroke="currentColor" strokeWidth="1.5" />
+    <line x1="50" y1="3" x2="73" y2="55" stroke="currentColor" strokeWidth="1.5" />
+    {/* Inner diamond / crystal */}
+    <polygon points="50,38 73,55 50,80 27,55" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    {/* Bottom connections */}
+    <line x1="27" y1="55" x2="7" y2="72" stroke="currentColor" strokeWidth="1.5" />
+    <line x1="73" y1="55" x2="93" y2="72" stroke="currentColor" strokeWidth="1.5" />
+    <line x1="50" y1="80" x2="50" y2="97" stroke="currentColor" strokeWidth="1.5" />
+    {/* Side connections */}
+    <line x1="27" y1="55" x2="7" y2="28" stroke="currentColor" strokeWidth="1.5" />
+    <line x1="73" y1="55" x2="93" y2="28" stroke="currentColor" strokeWidth="1.5" />
+    {/* Bottom diamond to hex */}
+    <line x1="27" y1="55" x2="50" y2="80" stroke="currentColor" strokeWidth="1.5" />
+    <line x1="73" y1="55" x2="50" y2="80" stroke="currentColor" strokeWidth="1.5" />
   </svg>
 );
 
