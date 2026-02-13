@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { CheckCircle2 } from "lucide-react";
 
 const proofPoints = [
   "Cannot be replayed",
@@ -19,21 +18,20 @@ const gains = [
 
 const About = () => {
   return (
-    <section id="about" className="py-24 md:py-32 relative">
-      <div className="absolute inset-0 grid-pattern opacity-10" />
-      <div className="relative max-w-7xl mx-auto px-6">
-        {/* About intro */}
+    <section id="about" className="py-24 md:py-32">
+      <div className="max-w-6xl mx-auto px-6 lg:px-8">
+        {/* Intro */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.6 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.5 }}
           className="max-w-3xl mb-20"
         >
-          <h2 className="font-heading text-4xl md:text-5xl font-bold mb-6">
-            About <span className="text-primary">QSVA</span>
+          <h2 className="font-serif text-4xl md:text-5xl text-foreground mb-8">
+            About QSVA
           </h2>
-          <div className="space-y-4 text-muted-foreground leading-relaxed">
+          <div className="space-y-5 text-muted-foreground leading-relaxed">
             <p>
               Agentic systems don't just execute commands — they decide what actions to take.
               They initiate financial transfers, modify infrastructure, recover systems, and act
@@ -42,68 +40,67 @@ const About = () => {
             <p>
               IAM, MFA, and device trust were designed for human‑initiated sessions, not for systems
               that generate intent and execute actions autonomously. As agentic systems scale, the
-              question is no longer <em className="text-foreground">who logged in</em> — it's{" "}
-              <em className="text-foreground">who approved this specific action at the moment it executed</em>.
+              question is no longer <em className="text-foreground not-italic font-medium">who logged in</em> — it's{" "}
+              <em className="text-foreground not-italic font-medium">who approved this specific action at the moment it executed</em>.
             </p>
           </div>
         </motion.div>
 
-        {/* Two column layout */}
-        <div className="grid md:grid-cols-2 gap-16">
-          {/* How it works */}
+        {/* Divider */}
+        <div className="h-px bg-border mb-20" />
+
+        {/* Two columns */}
+        <div className="grid md:grid-cols-2 gap-16 md:gap-24">
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6 }}
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.5 }}
           >
-            <h3 className="font-heading text-2xl font-bold mb-4">How QSVA Works</h3>
-            <p className="text-muted-foreground mb-6 leading-relaxed">
+            <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-5">How QSVA Works</h3>
+            <p className="text-muted-foreground mb-8 leading-relaxed">
               QSVA converts a human decision into cryptographic proof bound to a single action
               within an execution path. That proof:
             </p>
-            <div className="space-y-3">
+            <ul className="space-y-4">
               {proofPoints.map((point) => (
-                <div key={point} className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full border border-primary/50 flex items-center justify-center flex-shrink-0">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                  </div>
+                <li key={point} className="flex items-center gap-4">
+                  <span className="w-1.5 h-1.5 rounded-full bg-foreground flex-shrink-0" />
                   <span className="text-sm font-medium text-foreground">{point}</span>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </motion.div>
 
-          {/* What agents gain */}
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <h3 className="font-heading text-2xl font-bold mb-4">What Agentic Systems Gain</h3>
-            <div className="space-y-3">
+            <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-5">What Systems Gain</h3>
+            <ul className="space-y-4">
               {gains.map((gain) => (
-                <div key={gain} className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-muted-foreground">{gain}</span>
-                </div>
+                <li key={gain} className="flex items-start gap-4">
+                  <span className="w-1.5 h-1.5 rounded-full bg-foreground flex-shrink-0 mt-2" />
+                  <span className="text-sm text-muted-foreground leading-relaxed">{gain}</span>
+                </li>
               ))}
-            </div>
+            </ul>
           </motion.div>
         </div>
 
-        {/* Bottom callout */}
+        {/* Callout */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-50px" }}
-          transition={{ duration: 0.6 }}
-          className="mt-20 rounded-xl border border-primary/20 bg-primary/5 p-8 md:p-12 text-center"
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="mt-24 border-l-2 border-foreground pl-8 py-2 max-w-3xl"
         >
-          <p className="font-heading text-xl md:text-2xl font-semibold text-foreground leading-relaxed max-w-3xl mx-auto">
-            QSVA does not replace autonomy.{" "}
-            <span className="text-primary">It defines the boundary where autonomy must stop.</span>
+          <p className="font-serif text-xl md:text-2xl text-foreground leading-relaxed">
+            QSVA does not replace autonomy.
+            It defines the boundary where autonomy must stop.
           </p>
         </motion.div>
       </div>

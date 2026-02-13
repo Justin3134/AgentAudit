@@ -8,6 +8,19 @@ const navLinks = [
   { label: "Team", href: "#team" },
 ];
 
+const QSVALogo = ({ className = "" }: { className?: string }) => (
+  <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    {/* Outer hexagon */}
+    <polygon points="50,5 90,27.5 90,72.5 50,95 10,72.5 10,27.5" stroke="currentColor" strokeWidth="2.5" fill="none" />
+    {/* Inner hexagon */}
+    <polygon points="50,22 73,36 73,64 50,78 27,64 27,36" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.6" />
+    {/* Center lines connecting inner to outer - cube effect */}
+    <line x1="50" y1="5" x2="50" y2="22" stroke="currentColor" strokeWidth="1.5" opacity="0.6" />
+    <line x1="90" y1="72.5" x2="73" y2="64" stroke="currentColor" strokeWidth="1.5" opacity="0.6" />
+    <line x1="10" y1="72.5" x2="27" y2="64" stroke="currentColor" strokeWidth="1.5" opacity="0.6" />
+  </svg>
+);
+
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -20,36 +33,30 @@ const Navbar = () => {
 
   const handleClick = (href: string) => {
     setMobileOpen(false);
-    const el = document.querySelector(href);
-    el?.scrollIntoView({ behavior: "smooth" });
+    document.querySelector(href)?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
     <motion.nav
-      initial={{ y: -20, opacity: 0 }}
+      initial={{ y: -10, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.4 }}
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? "bg-background/80 backdrop-blur-xl border-b border-border" : "bg-transparent"
+        scrolled ? "bg-background/90 backdrop-blur-md border-b border-border" : "bg-transparent"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <a href="#" className="flex items-center gap-3 group" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-          <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="transition-transform group-hover:scale-110">
-            <polygon points="50,5 90,27.5 90,72.5 50,95 10,72.5 10,27.5" stroke="currentColor" strokeWidth="2" fill="none" className="text-primary" />
-            <polygon points="50,20 75,35 75,65 50,80 25,65 25,35" stroke="currentColor" strokeWidth="1.5" fill="none" className="text-primary/60" />
-            <circle cx="50" cy="50" r="3" className="fill-primary" />
-          </svg>
-          <span className="font-heading text-xl font-bold tracking-wider text-foreground">QSVA</span>
+      <div className="max-w-6xl mx-auto px-6 lg:px-8 py-5 flex items-center justify-between">
+        <a href="#" className="flex items-center gap-2.5" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+          <QSVALogo className="text-foreground" />
+          <span className="text-lg font-semibold tracking-wide text-foreground">QSVA</span>
         </a>
 
-        {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-10">
           {navLinks.map((link) => (
             <button
               key={link.href}
               onClick={() => handleClick(link.href)}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               {link.label}
             </button>
@@ -58,30 +65,28 @@ const Navbar = () => {
             href="https://calendly.com/ben-qsva/30min"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-semibold px-5 py-2.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity glow-button"
+            className="text-sm font-medium px-5 py-2 rounded-md bg-primary text-primary-foreground hover:bg-foreground/90 transition-colors"
           >
-            Talk to Us
+            Contact
           </a>
         </div>
 
-        {/* Mobile toggle */}
         <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden text-foreground">
-          {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+          {mobileOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
 
-      {/* Mobile menu */}
       {mobileOpen && (
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="md:hidden bg-background/95 backdrop-blur-xl border-b border-border px-6 pb-6 space-y-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="md:hidden bg-background border-b border-border px-6 pb-6 space-y-3"
         >
           {navLinks.map((link) => (
             <button
               key={link.href}
               onClick={() => handleClick(link.href)}
-              className="block w-full text-left text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+              className="block w-full text-left text-sm text-muted-foreground hover:text-foreground py-2"
             >
               {link.label}
             </button>
@@ -90,9 +95,9 @@ const Navbar = () => {
             href="https://calendly.com/ben-qsva/30min"
             target="_blank"
             rel="noopener noreferrer"
-            className="block text-center text-sm font-semibold px-5 py-2.5 rounded-lg bg-primary text-primary-foreground"
+            className="block text-center text-sm font-medium px-5 py-2.5 rounded-md bg-primary text-primary-foreground"
           >
-            Talk to Us
+            Contact
           </a>
         </motion.div>
       )}

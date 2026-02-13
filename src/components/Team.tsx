@@ -55,17 +55,17 @@ const members = [
 
 const Team = () => {
   return (
-    <section id="team" className="py-24 md:py-32 relative">
-      <div className="max-w-7xl mx-auto px-6">
+    <section id="team" className="py-24 md:py-32 bg-secondary">
+      <div className="max-w-6xl mx-auto px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.5 }}
+          className="mb-16"
         >
-          <h2 className="font-heading text-4xl md:text-5xl font-bold mb-4">The Team</h2>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+          <h2 className="font-serif text-4xl md:text-5xl text-foreground mb-4">Leadership</h2>
+          <p className="text-muted-foreground text-lg max-w-xl">
             Built by experts in cryptography, AI, and enterprise security.
           </p>
         </motion.div>
@@ -74,38 +74,35 @@ const Team = () => {
           {members.map((m, i) => (
             <motion.div
               key={m.name}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 15 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.5, delay: i * 0.08 }}
-              className="group rounded-xl border border-border bg-card overflow-hidden hover:border-primary/30 transition-all duration-300"
+              transition={{ duration: 0.4, delay: i * 0.05 }}
             >
-              <div className="aspect-[4/3] overflow-hidden bg-muted">
+              <div className="aspect-[3/4] overflow-hidden rounded-lg bg-accent mb-5">
                 <img
                   src={m.img}
                   alt={m.name}
-                  className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-full object-cover object-top grayscale hover:grayscale-0 transition-all duration-500"
                 />
               </div>
-              <div className="p-6">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="font-heading text-lg font-semibold text-foreground">{m.name}</h3>
-                    <p className="text-sm text-primary font-medium">{m.role}</p>
-                  </div>
-                  {m.linkedin && (
-                    <a
-                      href={m.linkedin}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-muted-foreground hover:text-primary transition-colors flex-shrink-0 mt-1"
-                    >
-                      <Linkedin size={18} />
-                    </a>
-                  )}
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">{m.name}</h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">{m.role}</p>
                 </div>
-                <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{m.bio}</p>
+                {m.linkedin && (
+                  <a
+                    href={m.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground hover:text-foreground transition-colors mt-0.5"
+                  >
+                    <Linkedin size={16} />
+                  </a>
+                )}
               </div>
+              <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{m.bio}</p>
             </motion.div>
           ))}
         </div>
