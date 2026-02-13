@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
+import qsvaLogoBlack from "@/assets/qsva-logo-black.png";
 
 const navLinks = [
   { label: "Built For", href: "#built-for" },
@@ -8,29 +9,6 @@ const navLinks = [
   { label: "Team", href: "#team" },
   { label: "Waitlist", href: "#waitlist" },
 ];
-
-const QSVALogo = ({ className = "", size = 32 }: { className?: string; size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    {/* Outer hexagon */}
-    <polygon points="50,3 93,28 93,72 50,97 7,72 7,28" stroke="currentColor" strokeWidth="2" fill="none" />
-    {/* Top inner triangle */}
-    <line x1="50" y1="3" x2="50" y2="38" stroke="currentColor" strokeWidth="1.5" />
-    <line x1="50" y1="3" x2="27" y2="55" stroke="currentColor" strokeWidth="1.5" />
-    <line x1="50" y1="3" x2="73" y2="55" stroke="currentColor" strokeWidth="1.5" />
-    {/* Inner diamond / crystal */}
-    <polygon points="50,38 73,55 50,80 27,55" stroke="currentColor" strokeWidth="1.5" fill="none" />
-    {/* Bottom connections */}
-    <line x1="27" y1="55" x2="7" y2="72" stroke="currentColor" strokeWidth="1.5" />
-    <line x1="73" y1="55" x2="93" y2="72" stroke="currentColor" strokeWidth="1.5" />
-    <line x1="50" y1="80" x2="50" y2="97" stroke="currentColor" strokeWidth="1.5" />
-    {/* Side connections */}
-    <line x1="27" y1="55" x2="7" y2="28" stroke="currentColor" strokeWidth="1.5" />
-    <line x1="73" y1="55" x2="93" y2="28" stroke="currentColor" strokeWidth="1.5" />
-    {/* Bottom diamond to hex */}
-    <line x1="27" y1="55" x2="50" y2="80" stroke="currentColor" strokeWidth="1.5" />
-    <line x1="73" y1="55" x2="50" y2="80" stroke="currentColor" strokeWidth="1.5" />
-  </svg>
-);
 
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -58,7 +36,7 @@ const Navbar = () => {
     >
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-5 flex items-center justify-between">
         <a href="#" className="flex items-center gap-2.5" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-          <QSVALogo className="text-foreground" />
+          <img src={qsvaLogoBlack} alt="QSVA" className="h-8 w-8" />
           <span className="text-lg font-semibold tracking-wide text-foreground">QSVA</span>
         </a>
 
