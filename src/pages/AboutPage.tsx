@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -33,6 +34,10 @@ const sectionFade = {
 };
 
 const AboutPage = () => {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
@@ -45,15 +50,25 @@ const AboutPage = () => {
         }} />
         <div className="max-w-6xl mx-auto px-6 lg:px-8 relative">
           <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="flex items-center gap-2 text-xs text-muted-foreground mb-8"
+          >
+            <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
+            <span>/</span>
+            <span className="text-foreground">About</span>
+          </motion.div>
+          <motion.div
             initial={{ opacity: 0, width: 0 }}
             animate={{ opacity: 1, width: "3rem" }}
-            transition={{ duration: 0.8, delay: 0.1 }}
+            transition={{ duration: 0.8, delay: 0.15 }}
             className="h-px bg-foreground mb-6"
           />
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            transition={{ duration: 0.5, delay: 0.25 }}
             className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground mb-5"
           >
             The QSVA Thesis
