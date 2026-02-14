@@ -65,15 +65,22 @@ const Navbar = () => {
         </a>
 
         <div className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => (
-            <button
-              key={link.href}
-              onClick={() => handleClick(link)}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-300 relative after:absolute after:bottom-[-2px] after:left-0 after:w-0 after:h-px after:bg-foreground after:transition-all after:duration-300 hover:after:w-full"
-            >
-              {link.label}
-            </button>
-          ))}
+          {navLinks.map((link) => {
+            const isActive = link.route && location.pathname === link.route;
+            return (
+              <button
+                key={link.href}
+                onClick={() => handleClick(link)}
+                className={`text-sm transition-colors duration-300 relative after:absolute after:bottom-[-2px] after:left-0 after:h-px after:bg-foreground after:transition-all after:duration-300 ${
+                  isActive
+                    ? "text-foreground font-medium after:w-full"
+                    : "text-muted-foreground hover:text-foreground after:w-0 hover:after:w-full"
+                }`}
+              >
+                {link.label}
+              </button>
+            );
+          })}
           <a
             href="https://calendly.com/ben-qsva/30min"
             target="_blank"
