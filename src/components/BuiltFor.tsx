@@ -1,6 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { Shield, Cpu, Landmark, Building2, Lock, HeartPulse } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 const items = [
   {
@@ -36,12 +35,11 @@ const items = [
 ];
 
 const BuiltFor = () => {
-  const isMobile = useIsMobile();
   const prefersReduced = useReducedMotion();
 
   const cardTransition = (i: number) => ({
-    duration: prefersReduced ? 0 : isMobile ? 0.5 : 0.6,
-    delay: prefersReduced ? 0 : isMobile ? 0 : i * 0.06,
+    duration: prefersReduced ? 0 : 0.55,
+    delay: prefersReduced ? 0 : i * 0.04,
     ease: [0.22, 1, 0.36, 1] as const,
   });
 
@@ -75,9 +73,9 @@ const BuiltFor = () => {
           {items.map((item, i) => (
             <motion.div
               key={item.title}
-              initial={{ opacity: 0, y: isMobile ? 12 : 0 }}
+              initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: isMobile ? "-20px" : "-50px" }}
+              viewport={{ once: true, margin: "-40px" }}
               transition={cardTransition(i)}
               className="bg-background p-7 lg:p-9 group hover:bg-accent/50 transition-all duration-500 relative"
             >
