@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { useEffect, useRef } from "react";
 import { Linkedin } from "lucide-react";
 
 import benImg from "@/assets/team/ben-zuiker.jpeg";
@@ -54,16 +54,30 @@ const members = [
 ];
 
 const Team = () => {
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          grid.classList.add("team-grid-visible");
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(grid);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <section id="team" className="py-20 md:py-28 bg-secondary">
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
-          className="mb-12"
-        >
+        <div className="mb-12">
           <div className="flex items-center gap-4 mb-4">
             <div className="h-px w-8 bg-foreground" />
             <span className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">Our People</span>
@@ -72,17 +86,14 @@ const Team = () => {
           <p className="text-muted-foreground text-lg max-w-xl">
             Built by experts in cryptography, AI, and enterprise security.
           </p>
-        </motion.div>
+        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12">
+        <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12 team-grid">
           {members.map((m, i) => (
-            <motion.div
+            <div
               key={m.name}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.6, delay: i * 0.08, ease: [0.25, 0.1, 0.25, 1] }}
-              className="group"
+              className="group team-card"
+              style={{ "--card-index": i } as React.CSSProperties}
             >
               <div className="aspect-[4/5] overflow-hidden rounded-lg bg-accent mb-4 relative">
                 <img
@@ -108,7 +119,7 @@ const Team = () => {
                 )}
               </div>
               <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{m.bio}</p>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>
