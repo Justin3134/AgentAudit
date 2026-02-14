@@ -1,5 +1,6 @@
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Shield, Cpu, Landmark, Building2, Lock, HeartPulse } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const items = [
   {
@@ -35,6 +36,15 @@ const items = [
 ];
 
 const BuiltFor = () => {
+  const isMobile = useIsMobile();
+  const prefersReduced = useReducedMotion();
+
+  const cardTransition = (i: number) => ({
+    duration: prefersReduced ? 0 : isMobile ? 0.5 : 0.6,
+    delay: prefersReduced ? 0 : isMobile ? 0 : i * 0.06,
+    ease: [0.22, 1, 0.36, 1] as const,
+  });
+
   return (
     <section id="built-for" className="py-20 md:py-28 bg-secondary relative">
       {/* Decorative vertical line */}
@@ -42,10 +52,10 @@ const BuiltFor = () => {
 
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 8 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-40px" }}
-          transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           className="mb-12"
         >
           <div className="flex items-center gap-4 mb-4">
@@ -65,10 +75,10 @@ const BuiltFor = () => {
           {items.map((item, i) => (
             <motion.div
               key={item.title}
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true, margin: "-30px" }}
-              transition={{ duration: 0.4, delay: i * 0.05, ease: [0.25, 0.1, 0.25, 1] }}
+              initial={{ opacity: 0, y: isMobile ? 12 : 0 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: isMobile ? "-20px" : "-50px" }}
+              transition={cardTransition(i)}
               className="bg-background p-7 lg:p-9 group hover:bg-accent/50 transition-all duration-500 relative"
             >
               {/* Hover accent line */}
@@ -90,7 +100,7 @@ const BuiltFor = () => {
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.3, delay: 0.1 }}
+          transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
           className="mt-12 text-center"
         >
           <a
