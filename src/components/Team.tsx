@@ -61,7 +61,7 @@ const Team = () => {
           initial={{ opacity: 0, y: 15 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
           className="mb-12"
         >
           <div className="flex items-center gap-4 mb-4">
@@ -81,7 +81,7 @@ const Team = () => {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.5, delay: i * 0.07 }}
+              transition={{ duration: 0.6, delay: i * 0.08, ease: [0.25, 0.1, 0.25, 1] }}
               className="group"
             >
               <div className="aspect-[4/5] overflow-hidden rounded-lg bg-accent mb-4 relative">

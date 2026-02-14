@@ -45,7 +45,7 @@ const BuiltFor = () => {
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-40px" }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
+          transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
           className="mb-12"
         >
           <div className="flex items-center gap-4 mb-4">
@@ -68,7 +68,7 @@ const BuiltFor = () => {
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true, margin: "-30px" }}
-              transition={{ duration: 0.25, delay: i * 0.03, ease: "easeOut" }}
+              transition={{ duration: 0.4, delay: i * 0.05, ease: [0.25, 0.1, 0.25, 1] }}
               className="bg-background p-7 lg:p-9 group hover:bg-accent/50 transition-all duration-500 relative"
             >
               {/* Hover accent line */}
