@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import qsvaLogoIcon from "@/assets/qsva-logo-icon.png";
+import qsvaLogoIcon from "@/assets/qsva-logo-nobg.png";
 
 type NavLink = { label: string; href: string; route?: string };
 

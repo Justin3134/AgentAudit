@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import qsvaLogoBlack from "@/assets/qsva-logo-black.png";
+import qsvaLogoBlack from "@/assets/qsva-logo-nobg.png";
 
 const stats = [
   { value: "Post‑Quantum", label: "Cryptographic Foundation" },

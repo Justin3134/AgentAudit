@@ -1,5 +1,5 @@
 import { Linkedin } from "lucide-react";
-import qsvaLogoBlack from "@/assets/qsva-logo-black.png";
+import qsvaLogoBlack from "@/assets/qsva-logo-nobg.png";
 
 const Footer = () => {
   return (
