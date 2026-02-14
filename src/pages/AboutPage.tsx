@@ -172,7 +172,7 @@ const AboutPage = () => {
       </section>
 
       {/* ─── Part 2: The Missing Control ─── */}
-      <section className="py-20 md:py-28 bg-secondary relative overflow-hidden">
+      <section className="py-20 md:py-28 bg-secondary relative">
         <div className="absolute top-0 left-0 right-0 h-px bg-border" />
         <div className="max-w-6xl mx-auto px-6 lg:px-8">
           <div className="grid lg:grid-cols-[280px_1fr] gap-12 lg:gap-20">
