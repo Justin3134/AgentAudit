@@ -8,6 +8,28 @@ const corsHeaders = {
 
 const RECIPIENT = "Justin.07823@gmail.com";
 
+// In-memory rate limiter
+const rateLimits = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour
+const MAX_REQUESTS = 5; // 5 submissions per hour per IP
+
+function checkRateLimit(ip: string): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now();
+  const limit = rateLimits.get(ip);
+
+  if (!limit || now > limit.resetAt) {
+    rateLimits.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return { allowed: true };
+  }
+
+  if (limit.count >= MAX_REQUESTS) {
+    return { allowed: false, retryAfter: Math.ceil((limit.resetAt - now) / 1000) };
+  }
+
+  limit.count++;
+  return { allowed: true };
+}
+
 function validateEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email) && email.length <= 255;
@@ -30,6 +52,24 @@ function escapeHtml(unsafe: string): string {
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Rate limiting
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+             req.headers.get("x-real-ip") || "unknown";
+  const rateLimitCheck = checkRateLimit(ip);
+  if (!rateLimitCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: "Too many submissions. Please try again later." }),
+      {
+        status: 429,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "Retry-After": String(rateLimitCheck.retryAfter),
+        },
+      }
+    );
   }
 
   try {
