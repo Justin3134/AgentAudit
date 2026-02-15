@@ -86,7 +86,7 @@ const BuiltFor = () => {
               style={{ "--card-index": i } as React.CSSProperties}
             >
               {/* Hover accent line */}
-              <div className="absolute top-0 left-0 w-0 h-0.5 bg-foreground group-hover:w-full transition-all duration-500" />
+              <div className="absolute top-0 left-0 w-full h-0.5 bg-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
               <div className="flex items-start justify-between mb-5">
                 <span className="text-xs font-medium tracking-widest uppercase text-muted-foreground/50">
