@@ -1090,7 +1090,7 @@ function openTrinityPanel(idx) {
   html += '<a href="https://us14.abilityai.dev" target="_blank" style="display:block;text-align:center;border:1px solid ' + col + ';border-radius:4px;padding:8px;font-size:11px;color:' + col + ';text-decoration:none">Launch ' + e(ag.name||ag.template||'Agent') + ' in Trinity →</a>';
   html += '</div>';
 
-  document.getElementById('trinity-panel-content').innerHTML = html;
+  (document.getElementById('trinity-panel-content')||{}).innerHTML = html;
   document.getElementById('trinity-panel').classList.add('open');
   document.getElementById('trinity-overlay').style.display = 'block';
 }
@@ -1562,8 +1562,8 @@ async function sendMessage() {
               const ad = d.ad;
               if (ad) {
                 document.getElementById('zc-live-ad').style.display = 'block';
-                document.getElementById('zc-ad-title').textContent = ad.title || ad.sponsor || 'ZeroClick';
-                document.getElementById('zc-ad-msg').textContent = (ad.message || '').substring(0, 120);
+                (document.getElementById('zc-ad-title')||{}).textContent = ad.title || ad.sponsor || 'ZeroClick';
+                (document.getElementById('zc-ad-msg')||{}).textContent = (ad.message || '').substring(0, 120);
                 const cta = document.getElementById('zc-ad-cta');
                 cta.textContent = (ad.cta || 'Learn more') + ' →';
                 cta.href = ad.click_url || 'https://zeroclick.ai';
@@ -1631,8 +1631,8 @@ async function sendMessage() {
                   const ad = r.zeroclick_ad;
                   auditCards += renderAdCard(ad, r.roi_analysis && r.roi_analysis.top_score || 0);
                   document.getElementById('zc-live-ad').style.display = 'block';
-                  document.getElementById('zc-ad-title').textContent = ad.title || ad.sponsor || 'ZeroClick';
-                  document.getElementById('zc-ad-msg').textContent = (ad.message || '').substring(0, 120);
+                  (document.getElementById('zc-ad-title')||{}).textContent = ad.title || ad.sponsor || 'ZeroClick';
+                  (document.getElementById('zc-ad-msg')||{}).textContent = (ad.message || '').substring(0, 120);
                   const cta = document.getElementById('zc-ad-cta');
                   cta.textContent = (ad.cta || 'Learn more') + ' →';
                   cta.href = ad.click_url || 'https://zeroclick.ai';
@@ -1695,14 +1695,14 @@ async function refreshStats() {
       const first = credits.plans[planKeys[0]];
       const bal = first.balance != null ? first.balance : '?';
       const sub = first.is_subscriber ? '✓' : '✗';
-      document.getElementById('nvm-balance').textContent = bal + ' cr ' + sub;
+      (document.getElementById('nvm-balance')||{}).textContent = bal + ' cr ' + sub;
     }
   }
 
   setDot('dot-seller', !!s);
-  document.getElementById('st-seller').textContent = s ? 'seller' : 'seller offline';
+  (document.getElementById('st-seller')||{}).textContent = s ? 'seller' : 'seller offline';
   setDot('dot-buyer', !!b);
-  document.getElementById('st-buyer').textContent = b ? 'buyer' : 'buyer offline';
+  (document.getElementById('st-buyer')||{}).textContent = b ? 'buyer' : 'buyer offline';
 
   // Sponsor tool indicators
   const tools = stats ? (stats.tools || {}) : {};
@@ -1747,14 +1747,14 @@ async function refreshStats() {
   // ZeroClick — data lives in /stats (seller analytics module)
   const zc = stats ? stats.zeroclick : null;
   if (zc) {
-    document.getElementById('zc-served').textContent = zc.ads_served || 0;
-    document.getElementById('zc-imp').textContent = zc.impressions || 0;
-    document.getElementById('zc-conv').textContent = zc.conversions || 0;
+    (document.getElementById('zc-served')||{}).textContent = zc.ads_served || 0;
+    (document.getElementById('zc-imp')||{}).textContent = zc.impressions || 0;
+    (document.getElementById('zc-conv')||{}).textContent = zc.conversions || 0;
     const rate = zc.impressions > 0 ? ((zc.conversions / zc.impressions) * 100).toFixed(1) + '%' : '\\u2014';
-    document.getElementById('zc-rate').textContent = rate;
-    document.getElementById('zc-rev').textContent = (zc.revenue_driven || 0) + ' cr';
+    (document.getElementById('zc-rate')||{}).textContent = rate;
+    (document.getElementById('zc-rev')||{}).textContent = (zc.revenue_driven || 0) + ' cr';
     const feed = (zc.recent || []).filter(e => e.type !== 'served').slice(0, 6);
-    document.getElementById('zc-feed').innerHTML = feed.length
+    (document.getElementById('zc-feed')||{}).innerHTML = feed.length
       ? feed.map(e => {
           if (e.type === 'conversion') {
             return '<div><span style="color:var(--green)">✓ conv</span> <span style="color:var(--dim)">' + escHtml(e.sponsor || '') + '</span> <span style="color:var(--green)">+' + (e.credits||1) + 'cr</span></div>';
@@ -1765,14 +1765,14 @@ async function refreshStats() {
   }
 
   if (s) {
-    document.getElementById('rev').textContent = s.total_revenue_credits || 0;
-    document.getElementById('a').textContent = s.total_audits || 0;
-    document.getElementById('c').textContent = s.total_compares || 0;
-    document.getElementById('m').textContent = s.total_monitors || 0;
-    document.getElementById('ub').textContent = s.unique_buyers || 0;
+    (document.getElementById('rev')||{}).textContent = s.total_revenue_credits || 0;
+    (document.getElementById('a')||{}).textContent = s.total_audits || 0;
+    (document.getElementById('c')||{}).textContent = s.total_compares || 0;
+    (document.getElementById('m')||{}).textContent = s.total_monitors || 0;
+    (document.getElementById('ub')||{}).textContent = s.unique_buyers || 0;
 
     const txs = (s.transactions || []).slice(0, 8);
-    document.getElementById('txs').innerHTML = txs.length
+    (document.getElementById('txs')||{}).innerHTML = txs.length
       ? txs.map(t => {
           const method = t.payment_method === 'nevermined_x402' ? '\\u2714 nvm' : (t.payment_method === 'direct_fallback' ? '\\u2015 local' : t.payment_method);
           const cls = t.payment_method === 'nevermined_x402' ? 'var(--green)' : 'var(--orange)';
@@ -1784,8 +1784,8 @@ async function refreshStats() {
   // Buyer side
   const buyerData = by || (b ? b : null);
   if (buyerData) {
-    document.getElementById('ds').textContent = buyerData.total_spent_credits || (b && b.budget ? b.budget.daily_spent : 0) || 0;
-    document.getElementById('ts').textContent = buyerData.total_purchases || 0;
+    (document.getElementById('ds')||{}).textContent = buyerData.total_spent_credits || (b && b.budget ? b.budget.daily_spent : 0) || 0;
+    (document.getElementById('ts')||{}).textContent = buyerData.total_purchases || 0;
 
     // Buyer purchase history feed
     const ph = (by && by.purchase_history) || [];
@@ -1813,7 +1813,7 @@ async function refreshStats() {
 
   // Seller section — compact
   if (s) {
-    document.getElementById('rev').textContent = s.credits_earned || 0;
+    (document.getElementById('rev')||{}).textContent = s.credits_earned || 0;
     const sa = document.getElementById('seller-activity');
     if (sa) {
       const parts = [];

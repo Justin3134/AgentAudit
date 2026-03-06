@@ -1,13 +1,31 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+# Try .env in cwd first, then walk up to find it, then check known locations
+_env_paths = [
+    Path(".env"),
+    Path(__file__).parent / ".env",
+    Path(__file__).parent.parent / ".env",
+    Path(__file__).parent.parent / "hackathons/agents/agent-audit/.env",
+]
+for _p in _env_paths:
+    if _p.exists():
+        load_dotenv(_p, override=False)
+        break
+else:
+    load_dotenv()  # fallback: search default locations
 
 # --- Seller (creates/verifies payments) ---
 NVM_API_KEY = os.environ.get("NVM_API_KEY", "")
 NVM_ENVIRONMENT = os.environ.get("NVM_ENVIRONMENT", "sandbox")
 NVM_PLAN_ID = os.environ.get("NVM_PLAN_ID", "")
 NVM_AGENT_ID = os.environ.get("NVM_AGENT_ID", "")
+# Additional accepted plan IDs (e.g. AgentAuditUSDC) — comma-separated
+_extra = os.environ.get("NVM_EXTRA_PLAN_IDS", "")
+NVM_EXTRA_PLAN_IDS: list[str] = [p.strip() for p in _extra.split(",") if p.strip()]
+# All plan IDs this server accepts (primary + extras)
+NVM_ACCEPTED_PLAN_IDS: list[str] = ([NVM_PLAN_ID] if NVM_PLAN_ID else []) + NVM_EXTRA_PLAN_IDS
 
 # --- Buyer (separate account that *purchases* from the plan, e.g. justin.07823@gmail.com) ---
 # If not set, falls back to NVM_API_KEY (self-buy from same account — only works if
