@@ -1633,9 +1633,22 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         exec_tasks = [_exec_agent(p) for p in successful[:3]]
         exec_results = await asyncio.gather(*exec_tasks, return_exceptions=True)
         for r in exec_results:
-            if isinstance(r, dict) and r.get("status") == "ok":
-                business_outputs.append(r)
-                _analytics_mod.record_tool_call("nvm", "ok")
+            if isinstance(r, Exception):
+                logger.warning(f"[exec_agent] exception: {r}")
+                continue
+            if isinstance(r, dict):
+                logger.info(f"[exec_agent] {r.get('team')} → status={r.get('status')} content_len={len(r.get('content',''))}")
+                if r.get("status") == "ok":
+                    business_outputs.append(r)
+                    _analytics_mod.record_tool_call("nvm", "ok")
+                else:
+                    # Still include as "attempted" so UI can show partial info
+                    business_outputs.append({
+                        "team": r.get("team", ""),
+                        "status": r.get("status", "error"),
+                        "content": f"Agent responded with {r.get('status','unknown')} — {r.get('reason', 'no details')}",
+                        "endpoint": r.get("endpoint", ""),
+                    })
 
     report["business_outputs"] = business_outputs
 

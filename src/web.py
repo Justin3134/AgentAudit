@@ -736,15 +736,29 @@ function renderFlowView(data) {
   const bizOutputs = data.business_outputs || [];
   const apifyRun   = data.apify_run_result || null;
 
-  if (bizOutputs.length > 0 || apifyRun) {
+  // Show execution section if there are outputs OR purchases (show pending state)
+  const execPurchases = (data.purchases || []).filter(p => p.purchased);
+  if (bizOutputs.length > 0 || apifyRun || execPurchases.length > 0) {
     let exHtml = _secLabel('Live Business Execution — agents called with your goal');
     exHtml += '<div style="font-size:10px;color:var(--dim);margin-bottom:10px">';
     exHtml += 'Real-time responses from purchased agents, orchestrated by Trinity. Each agent ran your business goal as a task.';
     exHtml += '</div>';
+
+    // If no outputs yet but we have purchases, show pending state
+    if (bizOutputs.length === 0 && execPurchases.length > 0) {
+      exHtml += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">';
+      execPurchases.forEach(p => {
+        exHtml += '<div class="exec-card" style="opacity:0.8;border-color:#1a2a1a">';
+        exHtml += '<div class="exec-card-header"><div class="exec-card-team">' + e(p.team||'') + '</div>';
+        exHtml += '<div style="display:flex;align-items:center;gap:5px"><span class="dot-pulse"></span><span style="font-size:9px;color:var(--dim)">awaiting response</span></div></div>';
+        exHtml += '<div class="exec-card-content" style="color:var(--dim2)">Agent purchased — calling endpoint with business goal...</div></div>';
+      });
+      exHtml += '</div>';
+    }
     exHtml += '<div class="exec-grid">';
 
     bizOutputs.forEach(biz => {
-      // Format content: bold first line, rest as body
+      const ok = biz.status === 'ok';
       const rawContent = (biz.content || '').trim();
       const lines = rawContent.split('\\n').filter(l => l.trim());
       let formatted = '';
@@ -754,10 +768,14 @@ function renderFlowView(data) {
         formatted = e(rawContent);
       }
 
-      exHtml += '<div class="exec-card exec-running">';
+      exHtml += '<div class="exec-card' + (ok ? ' exec-running' : '') + '" style="' + (ok ? '' : 'opacity:0.7;border-color:#2a1a00') + '">';
       exHtml += '<div class="exec-card-header">';
       exHtml += '<div class="exec-card-team">' + e(biz.team||'') + '</div>';
-      exHtml += '<div style="display:flex;align-items:center;gap:5px"><span class="dot-pulse"></span><span class="exec-card-badge">live output</span></div>';
+      if (ok) {
+        exHtml += '<div style="display:flex;align-items:center;gap:5px"><span class="dot-pulse"></span><span class="exec-card-badge">live output</span></div>';
+      } else {
+        exHtml += '<div style="font-size:8px;padding:2px 6px;border-radius:2px;background:#2a1500;color:var(--orange)">' + e(biz.status||'pending') + '</div>';
+      }
       exHtml += '</div>';
       exHtml += '<div class="exec-card-content">' + formatted + '</div>';
       if (biz.endpoint) {
