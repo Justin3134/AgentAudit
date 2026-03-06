@@ -1,4 +1,0 @@
-project_id = "waxnkkjimswythxjodyf"
-
-[functions.send-waitlist]
-verify_jwt = false
