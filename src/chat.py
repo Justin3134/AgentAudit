@@ -1629,31 +1629,44 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                 )
                 if not token:
                     return {"team": team, "status": "no_token"}
-                # Build a business-specific query
+                # Build a task-specific query (not generic — helps Trinity agents give useful output)
                 biz_query = (
-                    f"I am starting a business: {goal}. "
-                    f"Please provide actionable intelligence, analysis, or insights for this business. "
-                    f"Be specific and concise (3-5 bullet points or a short paragraph)."
+                    f"Business goal: {goal}.\n"
+                    f"Task: Provide specific, actionable intelligence for this business RIGHT NOW.\n"
+                    f"Include: (1) 3 concrete market insights, (2) top 3 immediate actions to take today, "
+                    f"(3) one key metric to track. Be direct and specific — no generic advice."
                 )
-                async with httpx.AsyncClient(timeout=18.0) as client:
+                async with httpx.AsyncClient(timeout=25.0) as client:
                     resp = await client.post(
                         ep,
-                        json={"query": biz_query, "message": biz_query},
+                        json={"message": biz_query, "query": biz_query, "prompt": biz_query},
                         headers={"Content-Type": "application/json", "payment-signature": token},
                     )
                 if resp.status_code == 200:
                     try:
                         data = resp.json()
-                        # Extract text content from common response shapes
+                        # Extract text from common response shapes (Trinity, MCP, etc.)
                         content = (
                             data.get("response") or data.get("answer") or
                             data.get("content") or data.get("result") or
                             data.get("message") or data.get("output") or
-                            (str(data)[:300] if data else "")
+                            data.get("text") or ""
                         )
-                        if isinstance(content, dict):
-                            content = str(content)
-                        return {"team": team, "status": "ok", "content": str(content)[:400], "endpoint": ep}
+                        # Handle nested/list content
+                        if isinstance(content, list):
+                            content = "\n".join(str(c) for c in content[:5])
+                        elif isinstance(content, dict):
+                            content = content.get("text") or content.get("content") or str(content)[:300]
+                        # Try to extract readable content from MCP-style responses
+                        if not content and isinstance(data, dict):
+                            result = data.get("result", {})
+                            if isinstance(result, dict):
+                                items = result.get("content", [])
+                                if isinstance(items, list):
+                                    content = " ".join(i.get("text","") for i in items if isinstance(i, dict))
+                        if not content:
+                            content = str(data)[:400]
+                        return {"team": team, "status": "ok", "content": str(content)[:800], "endpoint": ep}
                     except Exception:
                         return {"team": team, "status": "ok", "content": resp.text[:300], "endpoint": ep}
                 else:

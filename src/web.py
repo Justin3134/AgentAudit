@@ -290,129 +290,118 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 #trinity-panel.open { right: 0; }
 #trinity-panel-close { position: sticky; top: 0; float: right; background: transparent; border: 1px solid var(--border); color: var(--dim); cursor: pointer; padding: 3px 8px; border-radius: 3px; font-family: inherit; font-size: 11px; }
 
-/* Flow section dividers with arrows */
-.flow-arrow { text-align: center; color: var(--dim2); font-size: 11px; margin: -14px 0 14px; letter-spacing: 0.1em; }
-
 /* ── Pipeline Graph ── */
 #flow-canvas { position: relative; }
-.fg-wrap { max-width: 960px; margin: 0 auto; }
+.fg-wrap { max-width: 880px; margin: 0 auto; }
+
+/* Goal box */
 .fg-goal-box {
-  margin: 0 auto 0 auto;
-  max-width: 420px;
+  margin: 0 auto;
+  max-width: 440px;
   border: 1px solid var(--orange);
-  border-radius: 8px;
-  padding: 16px 22px;
-  background: #0a0600;
+  border-radius: 6px;
+  padding: 14px 20px;
+  background: #080500;
   text-align: center;
-  position: relative;
-  z-index: 2;
+  position: relative; z-index: 2;
 }
-.fg-goal-title { font-size: 16px; font-weight: 500; margin-bottom: 4px; }
-.fg-goal-sub { font-size: 9px; color: var(--orange); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
-.fg-goal-caps { font-size: 9px; color: var(--dim); margin-top: 4px; }
+.fg-goal-title { font-size: 17px; font-weight: 500; }
+.fg-goal-sub { font-size: 9px; color: var(--orange); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
+.fg-goal-caps { font-size: 9px; color: var(--dim2); margin-top: 5px; }
+
+/* Stage wrapper */
+.fg-stage {
+  border: 1px solid var(--border); border-radius: 6px;
+  background: #040404; margin-top: 44px;
+  position: relative; z-index: 2;
+}
+.fg-stage.green { border-color: #1a4a1a; }
+.fg-stage-lbl {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-bottom: 1px solid var(--border);
+  font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim);
+}
+.fg-stage.green .fg-stage-lbl { border-color: #0d2a0d; color: var(--green); }
+.fg-step-n {
+  font-size: 8px; font-weight: 700; padding: 2px 5px;
+  border-radius: 2px; background: #1a1a1a; color: var(--dim);
+}
+.fg-stage.green .fg-step-n { background: #0d2a0d; color: var(--green); }
+.fg-stage-body { padding: 12px 14px; }
+
+/* 3-column discover row (inside stage) */
+.fg-branches { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+@media(max-width:600px) { .fg-branches { grid-template-columns: 1fr; } }
+.fg-branch { border: 1px solid var(--border); border-radius: 4px; background: #050505; }
+.fg-branch-hdr {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 10px; border-bottom: 1px solid var(--border);
+  font-size: 9px; text-transform: uppercase; letter-spacing: 0.07em;
+}
+.fg-branch-body { padding: 6px 8px; min-height: 60px; }
+.fg-branch.mkt .fg-branch-hdr { color: #6688dd; }
+.fg-branch.exa .fg-branch-hdr { color: #dd8833; }
+.fg-branch.api .fg-branch-hdr { color: #8844cc; }
+.fg-mini-card { border-left: 2px solid var(--border); padding: 3px 7px; margin-bottom: 4px; font-size: 10px; }
+.fg-mini-card:hover { background: #0a0a0a; }
+.fg-mini-name { font-weight: 500; }
+.fg-mini-meta { font-size: 9px; color: var(--dim2); }
+
+/* Audit chips */
+.fg-audit-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.fg-chip {
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 8px 12px; min-width: 120px; background: #050505;
+}
+.fg-chip.buy  { border-color: #1a4a1a; }
+.fg-chip.watch { border-color: #4a3a00; }
+.fg-chip.avoid { border-color: #4a1a1a; }
+.fg-chip-team  { font-size: 11px; font-weight: 500; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fg-chip-score { font-size: 22px; font-weight: 300; line-height: 1; }
+.fg-chip-label { font-size: 8px; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 2px; }
+.fg-chip-sub   { font-size: 9px; color: var(--dim2); margin-top: 5px; line-height: 1.5; }
+
+/* Trinity grid */
+.fg-trinity-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 8px; }
+.fg-ta {
+  border-radius: 4px; padding: 10px 12px; cursor: pointer;
+  transition: transform 0.12s;
+}
+.fg-ta:hover { transform: translateY(-2px); }
+.fg-ta-role { font-size: 8px; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 3px; }
+.fg-ta-name { font-size: 12px; font-weight: 500; margin-bottom: 2px; }
+.fg-ta-task { font-size: 9px; color: var(--dim); line-height: 1.4; margin-bottom: 5px; }
+.fg-ta-out  { font-size: 9px; color: #3a6a3a; font-style: italic; border-left: 2px solid #1a3a1a; padding-left: 5px; margin-bottom: 5px; }
+.fg-ta-foot { font-size: 9px; display: flex; align-items: center; gap: 4px; }
+
+/* Execution output cards */
+.fg-output-card {
+  border: 1px solid #1a4a1a; border-radius: 5px;
+  padding: 12px 14px; margin-bottom: 8px; background: #030a03;
+}
+.fg-output-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.fg-output-team { font-weight: 500; font-size: 13px; }
+.fg-output-live { display: flex; align-items: center; gap: 4px; font-size: 8px; color: var(--green); text-transform: uppercase; letter-spacing: 0.07em; }
+.fg-output-body { font-size: 10px; color: #ccc; line-height: 1.7; border-left: 2px solid #1a4a1a; padding-left: 10px; }
+.fg-output-body ul, .fg-output-body ol { margin: 4px 0 4px 12px; padding: 0; }
+.fg-synth-card {
+  border-left: 3px solid var(--border); padding: 8px 12px;
+  margin-bottom: 7px; background: #050505; border-radius: 0 4px 4px 0;
+}
+.fg-synth-title { font-size: 11px; font-weight: 500; margin-bottom: 5px; }
+.fg-synth-body  { font-size: 10px; color: var(--dim); line-height: 1.7; }
 
 /* SVG connector layer */
 .fg-svg { position: absolute; top: 0; left: 0; width: 100%; pointer-events: none; overflow: visible; }
-.fg-line { stroke: #333; stroke-width: 1; fill: none; }
-.fg-line-orange { stroke: #553300; stroke-width: 1; fill: none; }
-.fg-line-green  { stroke: #1a4a1a; stroke-width: 1; fill: none; }
-@keyframes dashIn { from { stroke-dashoffset: 300; } to { stroke-dashoffset: 0; } }
-.fg-line-anim { stroke-dasharray: 300; animation: dashIn 0.8s ease forwards; }
-
-/* 3-column branch row */
-.fg-branches { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 48px; position: relative; z-index: 2; }
-.fg-branch { border: 1px solid var(--border); border-radius: 6px; background: #050505; }
-.fg-branch-hdr {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 12px; border-bottom: 1px solid var(--border);
-  font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em;
-}
-.fg-branch-body { padding: 8px 10px; min-height: 80px; }
-.fg-branch.mkt .fg-branch-hdr { color: #7799ff; }
-.fg-branch.exa .fg-branch-hdr { color: #ff9944; }
-.fg-branch.api .fg-branch-hdr { color: #9955ff; }
-.fg-mini-card {
-  border-left: 2px solid var(--border); padding: 4px 8px; margin-bottom: 5px;
-  font-size: 10px; cursor: default;
-}
-.fg-mini-card:hover { background: #080808; }
-.fg-mini-name { font-weight: 500; color: var(--fg); }
-.fg-mini-meta { font-size: 9px; color: var(--dim2); margin-top: 1px; }
-.fg-mini-score { font-size: 10px; float: right; margin-top: -16px; }
-
-/* Full-width sections below */
-.fg-section { border: 1px solid var(--border); border-radius: 6px; background: #050505; margin-top: 48px; position: relative; z-index: 2; }
-.fg-section-hdr {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 9px 14px; border-bottom: 1px solid var(--border);
-  font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim);
-}
-.fg-section-body { padding: 12px 14px; }
-
-/* Competitive analysis table */
-.fg-comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 8px; }
-.fg-comp-card {
-  border: 1px solid #332200; border-radius: 4px; padding: 8px 10px; background: #070400;
-}
-.fg-comp-domain { font-size: 9px; color: #ff9944; margin-bottom: 3px; }
-.fg-comp-title { font-size: 11px; font-weight: 500; margin-bottom: 3px; }
-.fg-comp-snippet { font-size: 9px; color: var(--dim2); line-height: 1.4; }
-
-/* Audit score row */
-.fg-audit-row { display: flex; gap: 10px; flex-wrap: wrap; }
-.fg-audit-chip {
-  border: 1px solid var(--border); border-radius: 5px; padding: 8px 12px;
-  min-width: 140px; background: #060606;
-}
-.fg-audit-chip.buy  { border-color: #1a4a1a; }
-.fg-audit-chip.watch { border-color: #4a3a00; }
-.fg-audit-chip.avoid { border-color: #4a1a1a; }
-.fg-ac-team  { font-size: 11px; font-weight: 500; margin-bottom: 3px; }
-.fg-ac-score { font-size: 20px; font-weight: 300; }
-.fg-ac-label { font-size: 8px; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
-.fg-ac-sub   { font-size: 9px; color: var(--dim2); margin-top: 5px; line-height: 1.5; }
-
-/* NVM purchase row */
-.fg-purchase-row { display: flex; gap: 10px; flex-wrap: wrap; }
-.fg-purchase-card {
-  border: 1px solid #1a4a1a; border-radius: 5px; padding: 10px 14px;
-  min-width: 200px; background: #030a03;
-}
-.fg-pc-team { font-size: 12px; font-weight: 500; }
-.fg-pc-tx   { font-family: monospace; font-size: 9px; color: var(--dim2); margin-top: 3px; }
-.fg-pc-badge { font-size: 8px; padding: 2px 6px; border-radius: 2px; background: #0d2a0d; color: var(--green); margin-left: 6px; vertical-align: middle; }
-.fg-pc-badge.repeat { background: #2a2a00; color: var(--orange); }
-
-/* Trinity agents running */
-.fg-trinity-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px,1fr)); gap: 10px; }
-.fg-trinity-agent {
-  border-radius: 5px; padding: 12px; cursor: pointer;
-  transition: transform 0.15s;
-}
-.fg-trinity-agent:hover { transform: translateY(-2px); }
-.fg-ta-role { font-size: 8px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
-.fg-ta-name { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
-.fg-ta-task { font-size: 9px; color: var(--dim); line-height: 1.4; margin-bottom: 6px; }
-.fg-ta-out  { font-size: 9px; color: #3a6a3a; font-style: italic; border-left: 2px solid #1a3a1a; padding-left: 6px; margin-bottom: 6px; }
-.fg-ta-status { font-size: 9px; display: flex; align-items: center; gap: 4px; }
-
-/* ZeroClick in flow */
-.fg-zc-card {
-  display: flex; justify-content: space-between; align-items: center; gap: 16px;
-  border: 1px solid #1a3a1a; border-radius: 5px; padding: 10px 14px; background: #050f05;
-}
-.fg-zc-badge { font-size: 8px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--green); margin-bottom: 3px; }
-.fg-zc-cta { font-size: 10px; color: var(--green); text-decoration: none; border: 1px solid #1a4a1a; padding: 5px 12px; border-radius: 3px; white-space: nowrap; flex-shrink: 0; }
-.fg-zc-cta:hover { background: #0a200a; }
 
 /* Next actions */
-.fg-next { border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; margin-top: 20px; }
-.fg-next-title { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 10px; }
+.fg-next { border: 1px solid var(--border); border-radius: 5px; padding: 12px 14px; margin-top: 12px; }
+.fg-next-title { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 8px; }
 .fg-next-btn {
-  display: flex; align-items: center; gap: 10px; padding: 9px 12px;
-  border: 1px solid var(--border); border-radius: 4px; margin-bottom: 6px;
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  border: 1px solid var(--border); border-radius: 3px; margin-bottom: 5px;
   cursor: pointer; font-size: 11px; background: transparent; color: var(--fg);
-  font-family: inherit; width: 100%; text-align: left; transition: background 0.15s;
+  font-family: inherit; width: 100%; text-align: left; transition: background 0.12s;
 }
 .fg-next-btn:hover { background: #0d0d0d; border-color: #444; }
 .fg-next-btn:last-child { margin-bottom: 0; }
@@ -733,318 +722,214 @@ function renderFlowView(data) {
     canvas.innerHTML = '<div style="color:var(--dim2);padding:40px 0;text-align:center">Run a strategy in Chat to see the workflow graph here.<br><br><span style="font-size:10px">Try: "I want to start a marketing agency"</span></div>';
     return;
   }
-  const scored = data.audit_scores || [];
+  const scored = (data.audit_scores || []).filter(s => s.team);
   const apify  = data.apify_actors || [];
   const exa    = data.exa_research || {};
-  const exaHighlights = exa.highlights || [];
-  const exaSearch     = exa.search_context || [];
-  const competitors   = exa.competitors || [];
-  const allMkt     = data.all_marketplace_results || data.candidates || [];
-  const purchases  = (data.purchases||[]).filter(p => p.purchased);
-  const caps       = data.goal_capabilities || [];
+  const exaSearch = exa.search_context || [];
+  const allMkt = data.all_marketplace_results || data.candidates || [];
+  const purchases = (data.purchases||[]).filter(p => p.purchased);
+  const caps        = data.goal_capabilities || [];
   const trinityPlan = data.trinity_plan || [];
-  const ad         = data.zeroclick_ad || null;
-  const execSynth  = data.execution_synthesis || '';
-  const bizOutputs = data.business_outputs || [];
-  const bizBrief   = data.business_brief || {};
-  const tmplColors = {cornelius:'#334499',ruby:'#993344',outbound:'#449933',webmaster:'#996633'};
+  const ad          = data.zeroclick_ad || null;
+  const execSynth   = data.execution_synthesis || '';
+  const bizOutputs  = (data.business_outputs || []).filter(b => b.status === 'ok' && (b.content||'').length > 20);
+  const bizBrief    = data.business_brief || {};
+  const tmplColors  = {cornelius:'#334499',ruby:'#993344',outbound:'#449933',webmaster:'#996633'};
 
-  // ── SVG helpers ──────────────────────────────────────────────────────────────
-  // We build HTML then draw SVG lines over it using getBoundingClientRect
   let html = '<div class="fg-wrap">';
 
-  // ── 0: GOAL ──────────────────────────────────────────────────────────────────
+  // ── GOAL ──────────────────────────────────────────────────────────────────────
   html += '<div id="fgn-goal" class="fg-goal-box">';
   html += '<div class="fg-goal-sub">Business Goal</div>';
   html += '<div class="fg-goal-title">' + e(data.goal||'') + '</div>';
-  if (caps.length) html += '<div class="fg-goal-caps">needs: ' + caps.map(e).join(' · ') + '</div>';
-  html += '<div style="font-size:9px;color:var(--dim2);margin-top:6px">parallel research starting below</div>';
+  if (caps.length) html += '<div class="fg-goal-caps">' + caps.map(e).join(' · ') + '</div>';
   html += '</div>';
 
-  // ── 1: 3-BRANCH ROW (Marketplace · Exa · Apify) ──────────────────────────────
+  // ── STAGE 1 · DISCOVER ───────────────────────────────────────────────────────
+  html += '<div class="fg-stage" id="fgn-discover"><div class="fg-stage-lbl"><span class="fg-step-n">01</span> Discover — parallel search across 3 sources</div><div class="fg-stage-body">';
   html += '<div class="fg-branches">';
 
-  // — Marketplace
-  html += '<div class="fg-branch mkt" id="fgn-mkt">';
-  html += '<div class="fg-branch-hdr"><span>Marketplace</span><span style="opacity:0.6">' + allMkt.length + ' agents</span></div>';
-  html += '<div class="fg-branch-body">';
+  // Marketplace
+  html += '<div class="fg-branch mkt" id="fgn-mkt"><div class="fg-branch-hdr"><span>Marketplace</span><span>' + allMkt.length + '</span></div><div class="fg-branch-body">';
   allMkt.slice(0,5).forEach(m => {
     const sc = scored.find(s => s.team === m.team);
     const scv = sc ? sc.overall_score : null;
-    const col = scv === null ? 'var(--border)' : scv >= 0.6 ? '#1a4a1a' : scv >= 0.4 ? '#4a3a00' : '#4a1a1a';
-    const scoreTxt = scv !== null ? scv.toFixed(2) : '';
-    const scoreCol = scv === null ? '' : scv >= 0.6 ? 'var(--green)' : scv >= 0.4 ? 'var(--orange)' : 'var(--red)';
-    html += '<div class="fg-mini-card" style="border-color:' + col + '">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:baseline">';
-    html += '<div class="fg-mini-name">' + e((m.team||'').substring(0,22)) + '</div>';
-    if (scoreTxt) html += '<div style="font-size:10px;color:' + scoreCol + '">' + scoreTxt + '</div>';
-    html += '</div>';
-    html += '<div class="fg-mini-meta">' + e((m.category||m.price||'').substring(0,35)) + '</div>';
-    if (sc && sc.roi_decision) html += '<div style="font-size:9px;color:' + scoreCol + ';margin-top:2px">' + e(sc.roi_decision) + (sc.avg_latency_ms ? ' · ' + Math.round(sc.avg_latency_ms) + 'ms' : '') + '</div>';
-    html += '</div>';
+    const bc  = scv === null ? 'var(--border)' : scv >= 0.6 ? '#1a4a1a' : scv >= 0.4 ? '#4a3a00' : '#4a1a1a';
+    const tc  = scv === null ? ''    : scv >= 0.6 ? 'var(--green)' : scv >= 0.4 ? 'var(--orange)' : 'var(--red)';
+    html += '<div class="fg-mini-card" style="border-color:' + bc + '"><div style="display:flex;justify-content:space-between">';
+    html += '<div class="fg-mini-name">' + e((m.team||'').substring(0,20)) + '</div>';
+    if (scv !== null) html += '<div style="font-size:9px;color:' + tc + '">' + scv.toFixed(2) + '</div>';
+    html += '</div><div class="fg-mini-meta">' + e((m.category||m.price||'').substring(0,28)) + '</div></div>';
   });
-  if (ad) {
-    html += '<div style="margin-top:6px;padding:5px 8px;border:1px solid #1a3a1a;border-radius:3px;background:#040a04">';
-    html += '<div style="font-size:8px;color:var(--green);letter-spacing:0.08em;margin-bottom:2px">◉ ZeroClick</div>';
-    html += '<a href="' + e(ad.click_url||'#') + '" target="_blank" style="font-size:9px;color:#3a7a3a;text-decoration:none" data-offer-id="' + e(ad.id||'') + '">' + e((ad.title||'').substring(0,40)) + ' →</a>';
-    html += '</div>';
-  }
   html += '</div></div>';
 
-  // — Exa Web Research
-  html += '<div class="fg-branch exa" id="fgn-exa">';
-  html += '<div class="fg-branch-hdr"><span>Exa Research</span><span style="opacity:0.6">' + (exaSearch.length + exaHighlights.length) + ' results</span></div>';
-  html += '<div class="fg-branch-body">';
-  exaSearch.slice(0,3).forEach(r => {
-    const url = r.url || '';
-    const domain = url.replace(/https?:\/\//,'').split('/')[0];
-    html += '<div class="fg-mini-card" style="border-color:#332200">';
-    html += '<div class="fg-mini-name">' + e((r.title||domain).substring(0,38)) + '</div>';
-    html += '<div class="fg-mini-meta"><a href="' + e(url) + '" target="_blank" style="color:#ff9944;text-decoration:none">' + e(domain.substring(0,30)) + '</a></div>';
-    if (r.highlights && r.highlights[0]) html += '<div style="font-size:9px;color:var(--dim2);margin-top:2px;line-height:1.3">' + e(r.highlights[0].substring(0,70)) + '…</div>';
-    html += '</div>';
+  // Exa
+  html += '<div class="fg-branch exa" id="fgn-exa"><div class="fg-branch-hdr"><span>Exa Research</span><span>' + exaSearch.length + ' pages</span></div><div class="fg-branch-body">';
+  exaSearch.slice(0,4).forEach(r => {
+    const dom = (r.url||'').replace(/https?:\/\//,'').split('/')[0];
+    html += '<div class="fg-mini-card" style="border-color:#332200"><div class="fg-mini-name">' + e((r.title||dom).substring(0,30)) + '</div>';
+    html += '<div class="fg-mini-meta"><a href="' + e(r.url||'#') + '" target="_blank" style="color:#dd8833;text-decoration:none">' + e(dom.substring(0,24)) + ' →</a></div></div>';
   });
-  if (exaHighlights.slice(0,2).length) {
-    exaHighlights.slice(0,2).forEach(h => {
-      html += '<div class="fg-mini-card" style="border-color:#332200">';
-      html += '<div style="font-size:9px;color:var(--dim);line-height:1.4">' + e(String(h).substring(0,100)) + '</div>';
-      html += '</div>';
-    });
-  }
-  if (!exaSearch.length && !exaHighlights.length) {
-    html += '<div style="color:var(--dim2);font-size:10px;padding:8px 0">No results — Exa search ran but returned empty</div>';
-  }
-  if (ad && data.competitive_analysis) {
-    html += '<div style="margin-top:6px;padding:5px 8px;border:1px solid #1a3a1a;border-radius:3px;background:#040a04">';
-    html += '<div style="font-size:8px;color:var(--green);letter-spacing:0.08em;margin-bottom:2px">◉ ZeroClick — competitive insight</div>';
-    html += '<a href="' + e(ad.click_url||'#') + '" target="_blank" style="font-size:9px;color:#3a7a3a;text-decoration:none">' + e((ad.title||'').substring(0,40)) + ' →</a>';
-    html += '</div>';
-  }
+  if (!exaSearch.length) html += '<div style="color:var(--dim2);font-size:10px;padding:6px 0">No results</div>';
   html += '</div></div>';
 
-  // — Apify Store
-  html += '<div class="fg-branch api" id="fgn-apify">';
-  html += '<div class="fg-branch-hdr"><span>Apify Store</span><span style="opacity:0.6">' + apify.length + ' actors</span></div>';
-  html += '<div class="fg-branch-body">';
-  apify.slice(0,5).forEach(a => {
+  // Apify
+  html += '<div class="fg-branch api" id="fgn-apify"><div class="fg-branch-hdr"><span>Apify Store</span><span>' + apify.length + ' actors</span></div><div class="fg-branch-body">';
+  apify.slice(0,4).forEach(a => {
     const url = a.url || a.apify_url || '';
-    html += '<div class="fg-mini-card" style="border-color:#221133">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:baseline">';
-    html += '<div class="fg-mini-name">' + e((a.name||'Actor').replace('Apify: ','').substring(0,28)) + '</div>';
-    if (url) html += '<a href="' + e(url) + '" target="_blank" style="font-size:9px;color:#9955ff;text-decoration:none">open →</a>';
+    html += '<div class="fg-mini-card" style="border-color:#221133"><div style="display:flex;justify-content:space-between">';
+    html += '<div class="fg-mini-name">' + e((a.name||'').replace('Apify: ','').substring(0,20)) + '</div>';
+    if (url) html += '<a href="' + e(url) + '" target="_blank" style="font-size:9px;color:#8844cc;text-decoration:none">→</a>';
     html += '</div>';
-    html += '<div class="fg-mini-meta">' + e((a.description||'').substring(0,55)) + '</div>';
-    if (a.runs) html += '<div style="font-size:9px;color:var(--dim2);margin-top:1px">' + a.runs.toLocaleString() + ' runs</div>';
+    if (a.runs) html += '<div class="fg-mini-meta">' + a.runs.toLocaleString() + ' runs</div>';
     html += '</div>';
   });
-  if (!apify.length) html += '<div style="color:var(--dim2);font-size:10px;padding:8px 0">No actors found for this goal</div>';
   html += '</div></div>';
 
-  html += '</div>'; // end fg-branches
+  html += '</div></div></div>'; // end branches, stage-body, stage
 
-  // ── 2: COMPETITIVE ANALYSIS ──────────────────────────────────────────────────
-  if (competitors.length > 0 || data.competitive_analysis) {
-    html += '<div class="fg-section" id="fgn-comp">';
-    html += '<div class="fg-section-hdr"><span>Competitive Analysis — Exa Intelligence</span><span style="color:var(--orange)">web-sourced</span></div>';
-    html += '<div class="fg-section-body">';
-    if (competitors.length > 0) {
-      html += '<div class="fg-comp-grid">';
-      competitors.forEach(c => {
-        const domain = (c.url||'').replace(/https?:\/\//,'').split('/')[0];
-        html += '<div class="fg-comp-card">';
-        html += '<div class="fg-comp-domain"><a href="' + e(c.url||'#') + '" target="_blank" style="color:#ff9944;text-decoration:none">' + e(domain.substring(0,30)) + '</a></div>';
-        html += '<div class="fg-comp-title">' + e((c.title||domain).substring(0,45)) + '</div>';
-        if (c.snippet) html += '<div class="fg-comp-snippet">' + e(c.snippet.substring(0,100)) + '</div>';
-        html += '</div>';
-      });
-      html += '</div>';
-    }
-    if (data.competitive_analysis) {
-      html += '<div style="margin-top:10px;padding:10px 12px;background:#070400;border:1px solid #332200;border-radius:4px;font-size:10px;color:var(--dim);line-height:1.6">';
-      html += '<span style="font-size:8px;color:#ff8833;text-transform:uppercase;letter-spacing:0.07em">Exa synthesis — </span>';
-      html += e(data.competitive_analysis.substring(0,350));
-      html += '</div>';
-    }
-    html += '</div></div>';
-  }
-
-  // ── 3: AUDIT SCORES ──────────────────────────────────────────────────────────
+  // ── STAGE 2 · AUDIT ──────────────────────────────────────────────────────────
   if (scored.length > 0) {
-    html += '<div class="fg-section" id="fgn-audit">';
-    html += '<div class="fg-section-hdr"><span>Audit Scores — real HTTP probes + OpenAI quality scoring</span><span style="color:var(--dim2)">how scores work: latency (real ms) + quality (LLM eval) + price tier + consistency</span></div>';
-    html += '<div class="fg-section-body"><div class="fg-audit-row">';
+    html += '<div class="fg-stage" id="fgn-audit"><div class="fg-stage-lbl"><span class="fg-step-n">02</span> Audit — real HTTP probes · OpenAI quality scoring</div><div class="fg-stage-body"><div class="fg-audit-chips">';
     scored.forEach(s => {
-      const sc = s.overall_score || 0;
+      const sc  = s.overall_score || 0;
       const cls = sc >= 0.6 ? 'buy' : sc >= 0.4 ? 'watch' : 'avoid';
       const col = sc >= 0.6 ? 'var(--green)' : sc >= 0.4 ? 'var(--orange)' : 'var(--red)';
-      const roi = s.roi_decision || '';
-      html += '<div class="fg-audit-chip ' + cls + '">';
-      html += '<div class="fg-ac-team">' + e(s.team||'') + '</div>';
-      html += '<div class="fg-ac-score" style="color:' + col + '">' + sc.toFixed(2) + '</div>';
-      html += '<div class="fg-ac-label" style="color:' + col + '">' + e(roi) + '</div>';
-      html += '<div class="fg-ac-sub">';
-      if (s.quality_score !== undefined) html += 'quality: ' + (s.quality_score||0).toFixed(2) + (s.quality_score===0.5?' <span style="color:var(--dim2)">(paid endpoint — estimated)</span>':'') + '<br>';
-      if (s.avg_latency_ms) html += 'latency: ' + Math.round(s.avg_latency_ms) + 'ms<br>';
-      if (s.price_score !== undefined) html += 'price value: ' + (s.price_score||0).toFixed(2) + '<br>';
-      if (s.consistency_score !== undefined) html += 'consistency: ' + (s.consistency_score||0).toFixed(2);
+      html += '<div class="fg-chip ' + cls + '"><div class="fg-chip-team">' + e(s.team||'') + '</div>';
+      html += '<div class="fg-chip-score" style="color:' + col + '">' + sc.toFixed(2) + '</div>';
+      html += '<div class="fg-chip-label" style="color:' + col + '">' + e(s.roi_decision||'') + '</div>';
+      html += '<div class="fg-chip-sub">';
+      if (s.avg_latency_ms) html += Math.round(s.avg_latency_ms) + 'ms';
+      if (s.quality_score !== undefined) html += (s.avg_latency_ms?' · ':'') + 'q=' + (s.quality_score||0).toFixed(2) + (s.quality_score===0.5?'*':'');
       html += '</div></div>';
     });
-    html += '</div></div></div>';
+    html += '</div><div style="font-size:9px;color:var(--dim2);margin-top:8px">* quality estimated — paid endpoint. Scores: latency (real ms) + quality (LLM eval) + price + consistency.</div></div></div>';
   }
 
-  // ── 4: NEVERMINED PURCHASES ──────────────────────────────────────────────────
+  // ── STAGE 3 · PURCHASE ───────────────────────────────────────────────────────
   if (purchases.length > 0) {
-    html += '<div class="fg-section" id="fgn-purchase">';
-    html += '<div class="fg-section-hdr"><span>Nevermined Purchases — order_plan() blockchain transactions</span><span style="color:var(--green)">' + purchases.length + ' confirmed</span></div>';
-    html += '<div class="fg-section-body"><div class="fg-purchase-row">';
+    html += '<div class="fg-stage green" id="fgn-purchase"><div class="fg-stage-lbl"><span class="fg-step-n">03</span> Purchase — Nevermined order_plan() · ' + purchases.length + ' blockchain tx</div><div class="fg-stage-body">';
     purchases.forEach(p => {
-      const tx = (p.tx_hash||'').substring(0,18);
-      html += '<div class="fg-purchase-card">';
-      html += '<div class="fg-pc-team">' + e(p.team||'') + '<span class="fg-pc-badge' + (p.repeat_purchase?' repeat':'') + '">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span></div>';
-      html += '<div style="color:var(--green);font-size:13px;font-weight:500;margin:4px 0">order_plan ✓</div>';
-      html += '<div style="font-size:9px;color:var(--dim)">roi: ' + e(p.roi_decision||'BUY') + ' · score: ' + (p.audit_score||0).toFixed(2) + '</div>';
-      if (tx) html += '<div class="fg-pc-tx">tx: ' + e(tx) + '…</div>';
+      const tx = (p.tx_hash||'').substring(0,22);
+      const badge = p.repeat_purchase ? 'background:#2a2a00;color:var(--orange)' : 'background:#0d2a0d;color:var(--green)';
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #0d2a0d">';
+      html += '<div style="color:var(--green);font-size:16px;flex-shrink:0">✓</div>';
+      html += '<div style="flex:1;font-weight:500">' + e(p.team||'') + '<span style="font-size:8px;padding:2px 5px;border-radius:2px;margin-left:6px;' + badge + '">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span></div>';
+      html += '<div style="font-size:9px;color:var(--dim);flex-shrink:0">' + e(p.roi_decision||'BUY') + ' · ' + (p.audit_score||0).toFixed(2) + '</div>';
+      if (tx) html += '<div style="font-family:monospace;font-size:9px;color:var(--dim2);flex-shrink:0">' + e(tx) + '…</div>';
       html += '</div>';
     });
-    html += '</div>';
-    if (data.competitive_analysis) {
-      html += '<div style="margin-top:10px;padding:8px 10px;background:#020a02;border:1px solid #0d2a0d;border-radius:4px;font-size:10px;color:var(--dim)">ROI basis: top audit score + latency + price tier. Avoided ' + ((data.audit_scores||[]).length - purchases.length) + ' lower-score services.</div>';
-    }
     html += '</div></div>';
   }
 
-  // ── 5: ZEROCLICK AD ──────────────────────────────────────────────────────────
-  if (ad) {
-    html += '<div class="fg-section" id="fgn-zc" style="border-color:#1a4a1a">';
-    html += '<div class="fg-section-hdr" style="border-color:#1a4a1a"><span>◉ ZeroClick — AI-native contextual ad based on your goal</span><span style="color:var(--green)">live</span></div>';
-    html += '<div class="fg-section-body"><div class="fg-zc-card">';
-    html += '<div>';
-    html += '<div class="fg-zc-badge">Sponsored · ZeroClick</div>';
-    html += '<div style="font-weight:500;font-size:12px;margin-bottom:3px">' + e(ad.title||ad.sponsor||'') + '</div>';
-    html += '<div style="font-size:10px;color:var(--dim);line-height:1.4">' + e((ad.message||'').substring(0,130)) + '</div>';
-    html += '</div>';
-    html += '<a href="' + e(ad.click_url||'#') + '" target="_blank" class="fg-zc-cta" data-offer-id="' + e(ad.id||'') + '">' + e(ad.cta||'Learn more') + ' →</a>';
-    html += '</div></div></div>';
-  }
+  // ── STAGE 4 · EXECUTE (HERO) ─────────────────────────────────────────────────
+  html += '<div class="fg-stage" id="fgn-exec"><div class="fg-stage-lbl"><span class="fg-step-n">04</span> Execute — agents called with your goal · deliverables</div><div class="fg-stage-body">';
 
-  // ── 6: TRINITY AGENT FLEET ───────────────────────────────────────────────────
-  if (trinityPlan.length > 0) {
-    window._trinityFleet = {agents: trinityPlan, apify, goal: data.goal};
-    html += '<div class="fg-section" id="fgn-trinity">';
-    html += '<div class="fg-section-hdr"><span>▲ AbilityAI Trinity — autonomous agent fleet</span><span style="color:var(--dim2)">click agent to explore</span></div>';
-    html += '<div class="fg-section-body"><div class="fg-trinity-grid">';
-    trinityPlan.forEach((ag, i) => {
-      const col = tmplColors[(ag.template||'').toLowerCase()] || '#444466';
-      const relApify = apify.filter(a => {
-        const aName = (a.name||'').toLowerCase();
-        const role = (ag.role||'').toLowerCase();
-        return aName.includes(role.split(' ')[0]) || role.includes(aName.split(' ')[0]);
-      }).slice(0,1);
-      html += '<div class="fg-trinity-agent" style="border:1px solid ' + col + ';background:#050505" data-trinity-idx="' + i + '">';
-      html += '<div class="fg-ta-role" style="color:' + col + '">' + e(ag.template||'agent') + ' · trinity</div>';
-      html += '<div class="fg-ta-name">' + e(ag.name||'') + '</div>';
-      html += '<div class="fg-ta-task">' + e((ag.task||'').substring(0,90)) + '</div>';
-      if (ag.output_preview) html += '<div class="fg-ta-out">' + e(ag.output_preview.substring(0,80)) + '</div>';
-      if (relApify.length) html += '<div style="font-size:9px;color:var(--dim2);margin-bottom:5px">tool: ' + e((relApify[0].name||'').replace('Apify: ','').substring(0,28)) + '</div>';
-      html += '<div class="fg-ta-status"><span class="dot-pulse"></span><span style="color:var(--green)">running</span>';
-      html += '<span style="margin-left:auto;font-size:9px;color:var(--dim2)">tap →</span></div>';
+  if (bizOutputs.length > 0) {
+    // Real API responses from purchased agents (Trinity/Nexus)
+    bizOutputs.forEach(biz => {
+      html += '<div class="fg-output-card">';
+      html += '<div class="fg-output-hdr"><div class="fg-output-team">' + e(biz.team||'') + '</div>';
+      html += '<div class="fg-output-live"><span class="dot-pulse"></span>live · Trinity response</div></div>';
+      const content = (biz.content||'').replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+      html += '<div class="fg-output-body">' + e(biz.content||'').replace(/\n/g,'<br>') + '</div>';
+      if (biz.endpoint) html += '<div style="font-size:9px;color:var(--dim2);margin-top:5px">' + e(biz.endpoint.replace('https://','').split('/')[0]) + '</div>';
       html += '</div>';
     });
-    html += '</div></div></div>';
+    html += '<div style="height:8px"></div>';
   }
 
-  // ── 7: AGENT EXECUTION OUTPUTS ───────────────────────────────────────────────
-  if (execSynth || bizOutputs.length > 0) {
-    html += '<div class="fg-section" id="fgn-exec">';
-    html += '<div class="fg-section-hdr"><span>Agent Outputs — live execution results</span><span style="color:var(--green)">running</span></div>';
-    html += '<div class="fg-section-body">';
-
-    // Real responses from purchased agents
-    const realOutputs = bizOutputs.filter(b => b.status === 'ok');
-    if (realOutputs.length > 0) {
-      html += '<div style="margin-bottom:12px">';
-      realOutputs.forEach(biz => {
-        html += '<div style="border:1px solid #1a4a1a;border-radius:5px;padding:10px 12px;margin-bottom:8px;background:#030a03">';
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
-        html += '<div style="font-weight:500;font-size:12px">' + e(biz.team||'') + '</div>';
-        html += '<div style="display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span><span style="font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:0.07em">live output</span></div>';
-        html += '</div>';
-        html += '<div style="font-size:10px;color:#ccc;line-height:1.6;border-left:2px solid #1a4a1a;padding-left:10px">' + e(biz.content||'').replace(/\\n/g,'<br>') + '</div>';
+  // Execution synthesis (specific deliverables — always shown)
+  if (execSynth) {
+    const hasTrinityOutputs = bizOutputs.length > 0;
+    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--dim);margin-bottom:8px">' + (hasTrinityOutputs ? 'additionally synthesized' : 'AI-generated deliverables for your goal') + ' — via OpenAI + Exa context</div>';
+    const synthSections = execSynth.split(/\n(?=###\s|(?:\*\*)[A-Z]|\d\.\s\*\*)/).filter(s => s.trim().length > 20);
+    const acols = ['#334499','#993344','#449933','#996633'];
+    if (synthSections.length > 1) {
+      synthSections.slice(0,4).forEach((sec, i) => {
+        const lines = sec.trim().split('\n').filter(l => l.trim());
+        const rawH  = (lines[0]||'').replace(/^[#*\d.\s]+/,'').replace(/\*\*/g,'').trim();
+        // Split "Name (Role): task" → take just "Name"
+        const agentName = rawH.split(/[:(—]/)[0].trim().substring(0,35);
+        const body = lines.slice(1).join('\n').replace(/\*\*/g,'').trim().substring(0,500);
+        const c = acols[i % acols.length];
+        html += '<div class="fg-synth-card" style="border-color:' + c + '">';
+        html += '<div class="fg-synth-title" style="color:#ccc">' + e(agentName) + '<span style="display:inline-flex;align-items:center;gap:3px;margin-left:8px;font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:0.06em"><span class="dot-pulse" style="background:' + c + '"></span>executing</span></div>';
+        html += '<div class="fg-synth-body">' + e(body).replace(/\n/g,'<br>') + '</div>';
         html += '</div>';
       });
-      html += '</div>';
+    } else {
+      html += '<div class="fg-synth-card"><div class="fg-synth-body">' + e(execSynth.substring(0,600)).replace(/\n/g,'<br>') + '</div></div>';
     }
-
-    // Execution synthesis (always shown — OpenAI-generated specific deliverables)
-    if (execSynth) {
-      html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:8px">OpenAI Execution Synthesis — specific deliverables per agent</div>';
-      const sections = execSynth.split(/(?=###\s|\*\*[A-Z]|^\d\.\s\*\*)/m).filter(s => s.trim().length > 10);
-      if (sections.length > 1) {
-        // Render each section as an agent card
-        sections.slice(0,4).forEach((sec, i) => {
-          const lines = sec.trim().split('\\n').filter(l => l.trim());
-          const titleLine = lines[0] || '';
-          const bodyLines = lines.slice(1);
-          const title = titleLine.replace(/^[#*\d.\s]+/, '').replace(/\*\*/g,'').trim().substring(0,50);
-          const body = bodyLines.join(' ').replace(/\*\*/g,'').substring(0,300);
-          const cols = ['#334499','#993344','#449933','#996633'];
-          const c = cols[i % cols.length];
-          html += '<div style="border-left:3px solid ' + c + ';padding:8px 12px;margin-bottom:8px;background:#060606;border-radius:0 4px 4px 0">';
-          html += '<div style="font-size:10px;font-weight:500;color:#ccc;margin-bottom:5px">' + e(title) + '</div>';
-          html += '<div style="font-size:10px;color:var(--dim);line-height:1.6">' + e(body) + '</div>';
-          html += '<div style="margin-top:5px;display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span><span style="font-size:9px;color:var(--green)">executing</span></div>';
-          html += '</div>';
-        });
-      } else {
-        html += '<div style="font-size:10px;color:var(--dim);line-height:1.7;border-left:2px solid var(--border);padding-left:12px">' + e(execSynth.substring(0,500)) + '</div>';
-      }
-    }
-    html += '</div></div>';
   }
 
-  // ── 8: NEXT ACTIONS ──────────────────────────────────────────────────────────
+  if (!bizOutputs.length && !execSynth) {
+    html += '<div style="color:var(--dim2);font-size:10px;padding:8px 0">No execution output yet — run a strategy with a specific business goal.</div>';
+  }
+  html += '</div></div>'; // end exec stage
+
+  // ── ZEROCLICK (after execute, contextual) ────────────────────────────────────
+  if (ad) {
+    html += '<div style="border:1px solid #1a4a1a;border-radius:4px;padding:10px 14px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;background:#040a04">';
+    html += '<div><div style="font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">◉ ZeroClick — AI-native contextual ad</div>';
+    html += '<div style="font-weight:500;font-size:12px">' + e(ad.title||ad.sponsor||'') + '</div>';
+    html += '<div style="font-size:10px;color:var(--dim);margin-top:2px">' + e((ad.message||'').substring(0,80)) + '</div></div>';
+    html += '<a href="' + e(ad.click_url||'#') + '" target="_blank" style="font-size:10px;color:var(--green);text-decoration:none;border:1px solid #1a4a1a;padding:6px 12px;border-radius:3px;white-space:nowrap;flex-shrink:0" data-offer-id="' + e(ad.id||'') + '">' + e(ad.cta||'Learn more') + ' →</a>';
+    html += '</div>';
+  }
+
+  // ── STAGE 5 · TRINITY FLEET ──────────────────────────────────────────────────
+  if (trinityPlan.length > 0) {
+    window._trinityFleet = {agents: trinityPlan, apify, goal: data.goal};
+    html += '<div class="fg-stage" id="fgn-trinity"><div class="fg-stage-lbl"><span class="fg-step-n">05</span> Trinity Fleet — AbilityAI autonomous agents · click to explore</div><div class="fg-stage-body"><div class="fg-trinity-grid">';
+    trinityPlan.forEach((ag, i) => {
+      const col = tmplColors[(ag.template||'').toLowerCase()] || '#444466';
+      html += '<div class="fg-ta" style="border:1px solid ' + col + ';background:#040404" data-trinity-idx="' + i + '">';
+      html += '<div class="fg-ta-role" style="color:' + col + '">' + e(ag.template||'') + '</div>';
+      html += '<div class="fg-ta-name">' + e(ag.name||'') + '</div>';
+      html += '<div class="fg-ta-task">' + e((ag.task||'').substring(0,70)) + '</div>';
+      if (ag.output_preview) html += '<div class="fg-ta-out">' + e(ag.output_preview.substring(0,60)) + '</div>';
+      html += '<div class="fg-ta-foot"><span class="dot-pulse"></span><span style="color:var(--green)">running</span><span style="margin-left:auto;color:var(--dim2);font-size:9px">tap →</span></div>';
+      html += '</div>';
+    });
+    html += '</div></div></div>';
+  }
+
+  // ── NEXT ACTIONS ─────────────────────────────────────────────────────────────
   const nextActions = bizBrief.next_suggested_actions || [
-    'Run deeper competitive analysis for ' + (data.goal||'this goal'),
-    'Generate a pricing strategy for my agency',
-    'Find more specialized agents in the marketplace',
+    'Run a deeper competitive analysis for ' + (data.goal||'this goal'),
+    'Generate a pricing strategy and revenue model',
+    'Find more specialized agents for this business',
   ];
-  html += '<div class="fg-next" id="fgn-next">';
-  html += '<div class="fg-next-title">Next Actions</div>';
+  html += '<div class="fg-next"><div class="fg-next-title">Next Actions</div>';
   const labels = ['(a)','(b)','(c)'];
   nextActions.slice(0,3).forEach((action, i) => {
     html += '<button class="fg-next-btn" data-action="' + e(action) + '">';
-    html += '<span style="color:var(--dim);font-size:10px;flex-shrink:0">' + (labels[i]||'') + '</span>';
+    html += '<span style="color:var(--dim);font-size:10px;flex-shrink:0">' + labels[i] + '</span>';
     html += '<span>' + e(action) + '</span>';
-    html += '<span style="color:var(--dim2);margin-left:auto;flex-shrink:0">→</span>';
-    html += '</button>';
+    html += '<span style="color:var(--dim2);margin-left:auto">→</span></button>';
   });
   html += '</div>';
 
-  html += '</div>'; // end fg-wrap
+  html += '</div>'; // fg-wrap
   canvas.innerHTML = html;
 
-  // Wire up Next Action buttons via data-action (safe from quote escaping)
+  // Event wiring
   canvas.querySelectorAll('.fg-next-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const action = btn.dataset.action;
-      if (action) { showView('chat'); const inp = document.getElementById('chat-input'); if(inp){inp.value=action; document.getElementById('send-btn').click();} }
+      const a = btn.dataset.action;
+      if (a) { showView('chat'); const inp = document.getElementById('chat-input'); if(inp){inp.value=a; document.getElementById('send-btn').click();} }
     });
   });
-
-  // Wire up Trinity agent clicks
   canvas.querySelectorAll('[data-trinity-idx]').forEach(card => {
     card.addEventListener('click', () => openTrinityPanel(parseInt(card.dataset.trinityIdx)));
   });
-
-  // Wire up ZeroClick impression tracking
   canvas.querySelectorAll('[data-offer-id]').forEach(el => {
     el.addEventListener('click', () => {
       const id = el.dataset.offerId;
-      if (id) fetch(S + '/zeroclick/click?offer_id=' + encodeURIComponent(id), {method:'POST'}).catch(()=>{});
+      if (id) fetch(S+'/zeroclick/click?offer_id='+encodeURIComponent(id),{method:'POST'}).catch(()=>{});
     });
   });
-
-  // Draw SVG connecting lines after layout is computed
   requestAnimationFrame(() => _drawFlowLines(canvas));
 }
 
@@ -1117,122 +1002,100 @@ function _drawFlowLines(canvas) {
 function renderBizDashboard(data) {
   const canvas = document.getElementById('biz-canvas');
   if (!data) {
-    canvas.innerHTML = '<div style="color:var(--dim2);padding:40px 0;text-align:center">Run a strategy in Chat first.<br><br><span style="font-size:10px">Try: "I want to build a marketing agency"</span></div>';
+    canvas.innerHTML = '<div style="color:var(--dim2);padding:40px 0;text-align:center">Run a strategy in Chat first.<br><span style="font-size:10px;color:var(--dim2)">Try: "build a marketing agency" or "start a food restaurant business"</span></div>';
     return;
   }
-
-  const goal = data.goal || '';
-  const trinityPlan = data.trinity_plan || [];
+  const goal      = data.goal || '';
   const purchases = (data.purchases || []).filter(p => p.purchased);
   const execSynth = data.execution_synthesis || '';
-  const roi = data.roi_analysis || {};
-  const bizBrief = data.business_brief || {};
-  const tmplColors = {cornelius:'#334499', ruby:'#993344', outbound:'#449933', webmaster:'#996633'};
+  const realOuts  = (data.business_outputs || []).filter(b => b.status === 'ok' && (b.content||'').length > 20);
+  const bizBrief  = data.business_brief || {};
+  const trinity   = data.trinity_plan || [];
+  const tmplColors = {cornelius:'#334499',ruby:'#993344',outbound:'#449933',webmaster:'#996633'};
 
   let html = '';
 
-  // Header
-  html += '<div class="biz-header">';
-  html += '<div class="biz-goal">' + e(goal) + '</div>';
-  html += '<div class="biz-meta">';
-  html += '<span><span class="dot-pulse" style="width:6px;height:6px"></span> Business Active</span>';
-  if (purchases.length) html += '<span style="color:var(--green)">' + purchases.length + ' agent(s) purchased</span>';
-  if (roi.credits_spent) html += '<span>' + roi.credits_spent + ' credits spent</span>';
-  if (roi.teams_purchased_from) html += '<span>Teams: ' + roi.teams_purchased_from.map(e).join(', ') + '</span>';
-  html += '</div>';
-  html += '</div>';
+  // ── HEADER ──
+  html += '<div style="border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:20px">';
+  html += '<div style="font-size:18px;font-weight:500;margin-bottom:5px">' + e(goal) + '</div>';
+  html += '<div style="display:flex;gap:14px;font-size:10px;color:var(--dim);flex-wrap:wrap">';
+  html += '<span style="display:flex;align-items:center;gap:5px"><span class="dot-pulse"></span>Running</span>';
+  if (purchases.length) html += '<span style="color:var(--green)">' + purchases.length + ' purchased</span>';
+  if (realOuts.length)  html += '<span style="color:var(--green)">' + realOuts.length + ' live responses</span>';
+  html += '</div></div>';
 
-  // Transactions row
+  // ── TRANSACTIONS ──
   if (purchases.length > 0) {
-    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:8px">Nevermined Transactions — Verified On-Chain</div>';
-    html += '<div class="biz-txns">';
+    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:8px">Nevermined — blockchain transactions</div>';
     purchases.forEach(p => {
-      const tx = (p.tx_hash||'').substring(0,20);
-      html += '<div class="biz-txn-row">';
-      html += '<div class="biz-txn-team">' + e(p.team||'') + '</div>';
-      html += '<span class="biz-txn-badge">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span>';
-      if (tx) html += '<div class="biz-txn-hash">tx: ' + e(tx) + '…</div>';
-      html += '<a href="https://nevermined.app" target="_blank" style="font-size:9px;color:var(--dim2);text-decoration:none">view →</a>';
+      const tx = (p.tx_hash||'').substring(0,22);
+      const badge = p.repeat_purchase ? 'background:#2a2a00;color:var(--orange)' : 'background:#0d2a0d;color:var(--green)';
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid #1a4a1a;border-radius:4px;margin-bottom:6px;background:#030a03">';
+      html += '<div style="color:var(--green);font-size:14px">✓</div>';
+      html += '<div style="flex:1;font-weight:500;font-size:12px">' + e(p.team||'') + '<span style="font-size:8px;padding:2px 5px;border-radius:2px;margin-left:6px;' + badge + '">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span></div>';
+      if (tx) html += '<div style="font-family:monospace;font-size:9px;color:var(--dim2)">' + e(tx) + '…</div>';
+      html += '<a href="https://nevermined.app" target="_blank" style="font-size:9px;color:var(--dim2);text-decoration:none;flex-shrink:0">view →</a>';
       html += '</div>';
     });
-    html += '</div>';
+    html += '<div style="height:16px"></div>';
   }
 
-  // Agent execution cards — parse execSynth into per-agent sections
-  html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:8px">Agent Execution — Running Now</div>';
-  html += '<div class="biz-grid">';
-
-  if (trinityPlan.length > 0 && execSynth) {
-    // Try to match each Trinity agent to a section in the synthesis
-      // Split synthesis into sections by agent headers (**, ##, or numbered)
-      const sections = execSynth.split(/(?=\*\*[A-Z]|##\s|[1-9]\.\s\*\*)/g).filter(s => s.trim().length > 10);
-    trinityPlan.slice(0,4).forEach((ag, i) => {
-      const col = tmplColors[(ag.template||'').toLowerCase()] || '#444466';
-      const cls = (ag.template||'').toLowerCase();
-      // Try to find the relevant section
-      const agName = (ag.name||'').toLowerCase();
-      const agRole = (ag.role||'').toLowerCase();
-      let agOutput = '';
-      // Search sections for this agent's name or role
-      for (const sec of sections) {
-        const sl = sec.toLowerCase();
-        if (sl.includes(agName) || sl.includes(agRole) || sl.includes(ag.template||'')) {
-          agOutput = sec.replace(/^[\s*#0-9.]+/, '').trim();
-          break;
-        }
-      }
-      // Fallback: assign section by index
-      if (!agOutput && sections[i]) agOutput = sections[i].replace(/^[\s*#0-9.]+/, '').trim();
-      if (!agOutput) agOutput = ag.output_preview || ag.task || 'Running task...';
-
-      html += '<div class="biz-agent-card ' + e(cls) + '" style="border-color:' + col + '">';
-      html += '<div style="font-size:8px;color:' + col + ';text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">' + e(ag.template||'agent') + '</div>';
-      html += '<div class="biz-agent-name">' + e(ag.name||'') + '</div>';
-      html += '<div class="biz-agent-role">' + e(ag.role||'') + '</div>';
-      html += '<div class="biz-agent-output">' + e(agOutput).replace(/\\n/g,'<br>') + '</div>';
-      html += '<div class="biz-agent-status"><span class="dot-pulse"></span><span style="color:var(--green);font-size:9px">running</span>';
-      html += '<span style="color:var(--dim2);font-size:9px;margin-left:auto">' + e(ag.task ? ag.task.substring(0,40)+'…' : '') + '</span></div>';
+  // ── LIVE AGENT RESPONSES (hero) ──
+  if (realOuts.length > 0) {
+    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--green);margin-bottom:10px">Live Agent Responses</div>';
+    realOuts.forEach(biz => {
+      html += '<div class="fg-output-card" style="margin-bottom:10px">';
+      html += '<div class="fg-output-hdr"><div class="fg-output-team">' + e(biz.team||'') + '</div>';
+      html += '<div class="fg-output-live"><span class="dot-pulse"></span>Trinity · live response</div></div>';
+      html += '<div class="fg-output-body">' + e(biz.content||'').replace(/\n/g,'<br>') + '</div>';
       html += '</div>';
     });
-  } else if (execSynth) {
-    // No Trinity plan — show raw synthesis in a single card
-    html += '<div class="biz-agent-card" style="grid-column:1/-1">';
-    html += '<div style="font-size:9px;color:var(--dim);margin-bottom:8px">Agent Synthesis</div>';
-    html += '<div class="biz-agent-output">' + e(execSynth).replace(/\\n/g,'<br>') + '</div>';
-    html += '</div>';
-  } else {
-    // No data yet — show skeleton
-    (purchases.length ? purchases : [{team:'Agent 1'},{team:'Agent 2'}]).slice(0,2).forEach(p => {
-      html += '<div class="biz-agent-card">';
-      html += '<div class="biz-agent-name">' + e(p.team||'Agent') + '</div>';
-      html += '<div class="biz-agent-output loading">Deploying to ' + e(goal) + '... Awaiting first response from agent.</div>';
-      html += '<div class="biz-agent-status"><span class="dot-pulse"></span><span style="color:var(--orange);font-size:9px">initializing</span></div>';
-      html += '</div>';
-    });
+    html += '<div style="height:16px"></div>';
   }
-  html += '</div>'; // end biz-grid
 
-  // Next actions
-  const nextActions = (bizBrief.next_suggested_actions || [
-    'Run deeper competitive analysis with Exa',
-    'Generate pricing strategy for ' + goal,
-    'Find more agents for ' + goal,
-  ]);
-  html += '<div class="biz-next">';
-  html += '<div class="biz-next-title">Next Actions — What should I do?</div>';
+  // ── EXECUTION SYNTHESIS (deliverables) ──
+  if (execSynth) {
+    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:10px">Agent Deliverables — OpenAI synthesis</div>';
+    const synthSections = execSynth.split(/\n(?=###\s|(?:\*\*)[A-Z]|\d\.\s\*\*)/).filter(s => s.trim().length > 20);
+    const acols = ['#334499','#993344','#449933','#996633'];
+    if (synthSections.length > 1) {
+      synthSections.slice(0,4).forEach((sec, i) => {
+        const lines = sec.trim().split('\n').filter(l => l.trim());
+        const rawH = (lines[0]||'').replace(/^[#*\d.\s]+/,'').replace(/\*\*/g,'').trim();
+        const agentName = rawH.split(/[:(—]/)[0].trim().substring(0,35);
+        const body = lines.slice(1).join('\n').replace(/\*\*/g,'').trim();
+        const c = acols[i % acols.length];
+        const tri = trinity[i];
+        html += '<div class="fg-synth-card" style="border-color:' + c + ';margin-bottom:8px">';
+        html += '<div class="fg-synth-title" style="color:#ccc">';
+        if (tri) html += '<span style="font-size:8px;color:' + c + ';text-transform:uppercase;letter-spacing:0.06em;margin-right:6px">' + e(tri.template||'') + '</span>';
+        html += e(agentName) + '<span class="dot-pulse" style="background:' + c + ';margin-left:8px"></span></div>';
+        html += '<div class="fg-synth-body">' + e(body.substring(0,500)).replace(/\n/g,'<br>') + '</div>';
+        html += '</div>';
+      });
+    } else if (execSynth) {
+      html += '<div class="fg-synth-card"><div class="fg-synth-body">' + e(execSynth.substring(0,800)).replace(/\n/g,'<br>') + '</div></div>';
+    }
+    html += '<div style="height:16px"></div>';
+  }
+
+  // ── NEXT ACTIONS ──
+  const nextActions = bizBrief.next_suggested_actions || [
+    'Run deeper competitive analysis for ' + goal,
+    'Generate a pricing strategy for this business',
+    'Find more specialized agents for ' + goal,
+  ];
+  html += '<div class="biz-next"><div class="biz-next-title">What should I do next?</div>';
   const bizLabels = ['(a)','(b)','(c)'];
-  nextActions.forEach((action, i) => {
+  nextActions.slice(0,3).forEach((action, i) => {
     html += '<button class="biz-next-action" data-biz-action="' + e(action) + '">';
-    html += '<span style="color:var(--dim);font-size:10px">' + (bizLabels[i]||'') + '</span>';
+    html += '<span style="color:var(--dim);font-size:10px;flex-shrink:0">' + (bizLabels[i]||'') + '</span>';
     html += '<span>' + e(action) + '</span>';
-    html += '<span style="color:var(--dim2);margin-left:auto">→</span>';
-    html += '</button>';
+    html += '<span style="color:var(--dim2);margin-left:auto">→</span></button>';
   });
   html += '</div>';
 
   canvas.innerHTML = html;
-
-  // Wire up next action buttons via data attribute (safe from quote escaping)
   canvas.querySelectorAll('[data-biz-action]').forEach(btn => {
     btn.addEventListener('click', () => {
       const action = btn.dataset.bizAction;
