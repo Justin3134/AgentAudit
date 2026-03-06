@@ -831,8 +831,7 @@ function renderFlowView(data) {
       html += '<div class="fg-output-card">';
       html += '<div class="fg-output-hdr"><div class="fg-output-team">' + e(biz.team||'') + '</div>';
       html += '<div class="fg-output-live"><span class="dot-pulse"></span>live · Trinity response</div></div>';
-      const content = (biz.content||'').replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
-      html += '<div class="fg-output-body">' + e(biz.content||'').replace(/\n/g,'<br>') + '</div>';
+      html += '<div class="fg-output-body">' + e(biz.content||'').replace(/\\n/g,'<br>') + '</div>';
       if (biz.endpoint) html += '<div style="font-size:9px;color:var(--dim2);margin-top:5px">' + e(biz.endpoint.replace('https://','').split('/')[0]) + '</div>';
       html += '</div>';
     });
@@ -843,23 +842,27 @@ function renderFlowView(data) {
   if (execSynth) {
     const hasTrinityOutputs = bizOutputs.length > 0;
     html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--dim);margin-bottom:8px">' + (hasTrinityOutputs ? 'additionally synthesized' : 'AI-generated deliverables for your goal') + ' — via OpenAI + Exa context</div>';
-    const synthSections = execSynth.split(/\n(?=###\s|(?:\*\*)[A-Z]|\d\.\s\*\*)/).filter(s => s.trim().length > 20);
+    const synthLines = execSynth.split('\\n').filter(l => l.trim().length > 0);
     const acols = ['#334499','#993344','#449933','#996633'];
+    const synthSections = [];
+    let curSec = [];
+    synthLines.forEach(ln => {
+      if (/^(###|\\*\\*[A-Z]|\\d\\.\\s)/.test(ln) && curSec.length > 0) { synthSections.push(curSec.join(' ')); curSec = []; }
+      curSec.push(ln);
+    });
+    if (curSec.length > 0) synthSections.push(curSec.join(' '));
     if (synthSections.length > 1) {
       synthSections.slice(0,4).forEach((sec, i) => {
-        const lines = sec.trim().split('\n').filter(l => l.trim());
-        const rawH  = (lines[0]||'').replace(/^[#*\d.\s]+/,'').replace(/\*\*/g,'').trim();
-        // Split "Name (Role): task" → take just "Name"
-        const agentName = rawH.split(/[:(—]/)[0].trim().substring(0,35);
-        const body = lines.slice(1).join('\n').replace(/\*\*/g,'').trim().substring(0,500);
+        const rawH  = sec.replace(/^(###\\s+|\\*\\*)/,'').split(/[:(]/)[0].replace(/\\*\\*/g,'').trim().substring(0,35);
+        const body = sec.replace(/^[^:]+:/,'').replace(/\\*\\*/g,'').trim().substring(0,500);
         const c = acols[i % acols.length];
         html += '<div class="fg-synth-card" style="border-color:' + c + '">';
-        html += '<div class="fg-synth-title" style="color:#ccc">' + e(agentName) + '<span style="display:inline-flex;align-items:center;gap:3px;margin-left:8px;font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:0.06em"><span class="dot-pulse" style="background:' + c + '"></span>executing</span></div>';
-        html += '<div class="fg-synth-body">' + e(body).replace(/\n/g,'<br>') + '</div>';
+        html += '<div class="fg-synth-title" style="color:#ccc">' + e(rawH||('Section '+(i+1))) + '<span style="display:inline-flex;align-items:center;gap:3px;margin-left:8px;font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:0.06em"><span class="dot-pulse" style="background:' + c + '"></span>executing</span></div>';
+        html += '<div class="fg-synth-body">' + e(body) + '</div>';
         html += '</div>';
       });
     } else {
-      html += '<div class="fg-synth-card"><div class="fg-synth-body">' + e(execSynth.substring(0,600)).replace(/\n/g,'<br>') + '</div></div>';
+      html += '<div class="fg-synth-card"><div class="fg-synth-body">' + e(execSynth.substring(0,600)) + '</div></div>';
     }
   }
 
@@ -1047,7 +1050,7 @@ function renderBizDashboard(data) {
       html += '<div class="fg-output-card" style="margin-bottom:10px">';
       html += '<div class="fg-output-hdr"><div class="fg-output-team">' + e(biz.team||'') + '</div>';
       html += '<div class="fg-output-live"><span class="dot-pulse"></span>Trinity · live response</div></div>';
-      html += '<div class="fg-output-body">' + e(biz.content||'').replace(/\n/g,'<br>') + '</div>';
+      html += '<div class="fg-output-body">' + e(biz.content||'').replace(/\\n/g,'<br>') + '</div>';
       html += '</div>';
     });
     html += '<div style="height:16px"></div>';
@@ -1056,25 +1059,30 @@ function renderBizDashboard(data) {
   // ── EXECUTION SYNTHESIS (deliverables) ──
   if (execSynth) {
     html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:10px">Agent Deliverables — OpenAI synthesis</div>';
-    const synthSections = execSynth.split(/\n(?=###\s|(?:\*\*)[A-Z]|\d\.\s\*\*)/).filter(s => s.trim().length > 20);
-    const acols = ['#334499','#993344','#449933','#996633'];
-    if (synthSections.length > 1) {
-      synthSections.slice(0,4).forEach((sec, i) => {
-        const lines = sec.trim().split('\n').filter(l => l.trim());
-        const rawH = (lines[0]||'').replace(/^[#*\d.\s]+/,'').replace(/\*\*/g,'').trim();
-        const agentName = rawH.split(/[:(—]/)[0].trim().substring(0,35);
-        const body = lines.slice(1).join('\n').replace(/\*\*/g,'').trim();
-        const c = acols[i % acols.length];
+    const synthLinesB = execSynth.split('\\n').filter(l => l.trim().length > 0);
+    const acols2 = ['#334499','#993344','#449933','#996633'];
+    const synthSecsB = [];
+    let curSecB = [];
+    synthLinesB.forEach(ln => {
+      if (/^(###|\\*\\*[A-Z]|\\d\\.\\s)/.test(ln) && curSecB.length > 0) { synthSecsB.push(curSecB.join(' ')); curSecB = []; }
+      curSecB.push(ln);
+    });
+    if (curSecB.length > 0) synthSecsB.push(curSecB.join(' '));
+    if (synthSecsB.length > 1) {
+      synthSecsB.slice(0,4).forEach((sec, i) => {
+        const rawH = sec.replace(/^(###\\s+|\\*\\*)/,'').split(/[:(]/)[0].replace(/\\*\\*/g,'').trim().substring(0,35);
+        const body = sec.replace(/^[^:]+:/,'').replace(/\\*\\*/g,'').trim();
+        const c = acols2[i % acols2.length];
         const tri = trinity[i];
         html += '<div class="fg-synth-card" style="border-color:' + c + ';margin-bottom:8px">';
         html += '<div class="fg-synth-title" style="color:#ccc">';
         if (tri) html += '<span style="font-size:8px;color:' + c + ';text-transform:uppercase;letter-spacing:0.06em;margin-right:6px">' + e(tri.template||'') + '</span>';
-        html += e(agentName) + '<span class="dot-pulse" style="background:' + c + ';margin-left:8px"></span></div>';
-        html += '<div class="fg-synth-body">' + e(body.substring(0,500)).replace(/\n/g,'<br>') + '</div>';
+        html += e(rawH||('Section '+(i+1))) + '<span class="dot-pulse" style="background:' + c + ';margin-left:8px"></span></div>';
+        html += '<div class="fg-synth-body">' + e(body.substring(0,500)) + '</div>';
         html += '</div>';
       });
     } else if (execSynth) {
-      html += '<div class="fg-synth-card"><div class="fg-synth-body">' + e(execSynth.substring(0,800)).replace(/\n/g,'<br>') + '</div></div>';
+      html += '<div class="fg-synth-card"><div class="fg-synth-body">' + e(execSynth.substring(0,800)) + '</div></div>';
     }
     html += '<div style="height:16px"></div>';
   }
