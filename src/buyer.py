@@ -112,19 +112,7 @@ async def fetch_marketplace_node(state: BuyerState) -> dict:
     _log(state, "Fetching marketplace via Discovery API...")
     entries = await fetch_marketplace(MARKETPLACE_CSV_URL, nvm_api_key=NVM_API_KEY)
 
-    # Always include our own service so the autonomous loop has something to audit
-    own = {
-        "team_name": "AgentAudit",
-        "endpoint_url": AUDIT_SERVICE_URL,
-        "description": "Quality scoring and trust layer — audit any AI service endpoint",
-        "plan_id": NVM_PLAN_ID,
-        "agent_id": NVM_AGENT_ID,
-        "category": "audit",
-    }
-    if not any(e.get("endpoint_url") == AUDIT_SERVICE_URL for e in entries):
-        entries.insert(0, own)
-
-    _log(state, f"Found {len(entries)} services in marketplace (including own)")
+    _log(state, f"Found {len(entries)} services in marketplace")
     return {"marketplace": entries}
 
 
@@ -367,15 +355,65 @@ async def execute_purchases_node(state: BuyerState) -> dict:
 
         try:
             headers = {"x-caller-id": "AgentAudit-Buyer"}
+            used_scheme = "no_payment"
             if not DEMO_MODE:
                 buyer_payments = get_buyer_payments()
                 if buyer_payments:
+                    # Probe the endpoint first to detect the required payment scheme
+                    probe_scheme = "nvm:erc4337"
                     try:
-                        token_resp = buyer_payments.x402.get_x402_access_token(
-                            plan_id=plan_id,
-                            agent_id=agent_id or None,
-                        )
-                        headers["payment-signature"] = token_resp.get("accessToken", "")
+                        async with httpx.AsyncClient(timeout=8.0) as probe_client:
+                            probe = await probe_client.post(
+                                f"{url.rstrip('/')}/data",
+                                json={"query": "probe"},
+                                headers={"x-caller-id": "AgentAudit-Buyer"},
+                            )
+                            if probe.status_code == 402:
+                                import base64 as _b64
+                                hdr = probe.headers.get("payment-required", "")
+                                if hdr:
+                                    try:
+                                        decoded = json.loads(_b64.b64decode(hdr + "==").decode())
+                                        for a in decoded.get("accepts", []):
+                                            if a.get("scheme") == "nvm:card-delegation":
+                                                probe_scheme = "nvm:card-delegation"
+                                                break
+                                    except Exception:
+                                        pass
+                    except Exception:
+                        pass
+
+                    try:
+                        if probe_scheme == "nvm:card-delegation":
+                            from payments_py.x402.types import CardDelegationConfig, X402TokenOptions
+                            methods = buyer_payments.delegation.list_payment_methods()
+                            if methods:
+                                pm = methods[0]
+                                token_resp = buyer_payments.x402.get_x402_access_token(
+                                    plan_id=plan_id,
+                                    agent_id=agent_id or None,
+                                    token_options=X402TokenOptions(
+                                        scheme="nvm:card-delegation",
+                                        delegation_config=CardDelegationConfig(
+                                            provider_payment_method_id=pm.id,
+                                            spending_limit_cents=50,
+                                            duration_secs=300,
+                                            max_transactions=1,
+                                        ),
+                                    ),
+                                )
+                                headers["payment-signature"] = token_resp.get("accessToken", "")
+                                used_scheme = "card-delegation"
+                                _log(state, f"  card-delegation token obtained ({pm.brand} ending {pm.last4})")
+                            else:
+                                _log(state, f"  no enrolled cards for card-delegation plan, skipping")
+                        else:
+                            token_resp = buyer_payments.x402.get_x402_access_token(
+                                plan_id=plan_id,
+                                agent_id=agent_id or None,
+                            )
+                            headers["payment-signature"] = token_resp.get("accessToken", "")
+                            used_scheme = "nevermined_x402"
                     except Exception as te:
                         _log(state, f"  token error for {team}: {te}")
 
@@ -394,7 +432,7 @@ async def execute_purchases_node(state: BuyerState) -> dict:
                     purchase_note = "zeroclick referral" if is_ad_driven else "verification purchase"
                     budget.record_purchase(price, url, purchase_note, decision["reason"])
 
-                    base_method = "nevermined_x402" if headers.get("payment-signature") else "no_payment"
+                    base_method = used_scheme if used_scheme != "no_payment" else ("nevermined_x402" if headers.get("payment-signature") else "no_payment")
                     payment_method = f"zeroclick_{base_method}" if is_ad_driven else base_method
 
                     entry = {

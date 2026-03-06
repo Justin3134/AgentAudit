@@ -571,10 +571,7 @@ def _ensure_plan_subscribed(plan_id: str) -> dict:
 
 
 def _get_buyer_token(plan_id: str, agent_id: str = "") -> str:
-    """Get x402 access token using the BUYER account key.
-
-    Subscribes to the plan first if not already subscribed.
-    """
+    """Get x402 access token using the BUYER account key (nvm:erc4337 / USDC scheme)."""
     payments = get_buyer_payments()
     if not payments:
         return ""
@@ -585,12 +582,62 @@ def _get_buyer_token(plan_id: str, agent_id: str = "") -> str:
         token = token_resp.get("accessToken", "")
         if token:
             _analytics_mod.record_tool_call("nevermined", "ok")
-            logger.info("x402 access token obtained via buyer account")
+            logger.info("x402 access token obtained via buyer account (erc4337/USDC)")
         return token
     except Exception as e:
         _analytics_mod.record_tool_call("nevermined", "error")
         logger.warning(f"Buyer token generation failed: {e}")
         return ""
+
+
+def _get_card_delegation_token(plan_id: str, agent_id: str = "") -> str:
+    """Get x402 access token using the nvm:card-delegation (fiat/Stripe) scheme.
+
+    Automatically lists enrolled payment methods and creates a per-request
+    card delegation. Falls back to the crypto token if no card is enrolled.
+    """
+    from payments_py.x402.types import CardDelegationConfig, X402TokenOptions
+
+    payments = get_buyer_payments()
+    if not payments:
+        return ""
+
+    # Discover the enrolled Stripe payment method
+    try:
+        methods = payments.delegation.list_payment_methods()
+        if not methods:
+            logger.warning("[card-delegation] No enrolled payment methods — falling back to crypto token")
+            return _get_buyer_token(plan_id, agent_id)
+        pm = methods[0]
+        logger.info(f"[card-delegation] Found card {pm.brand} ending {pm.last4}")
+    except Exception as e:
+        logger.warning(f"[card-delegation] list_payment_methods failed: {e} — falling back to crypto token")
+        return _get_buyer_token(plan_id, agent_id)
+
+    # Request a per-request card-delegation token ($0.50 max, 1 transaction, 5-minute window)
+    try:
+        token_resp = payments.x402.get_x402_access_token(
+            plan_id=plan_id,
+            agent_id=agent_id or None,
+            token_options=X402TokenOptions(
+                scheme="nvm:card-delegation",
+                delegation_config=CardDelegationConfig(
+                    provider_payment_method_id=pm.id,
+                    spending_limit_cents=50,
+                    duration_secs=300,
+                    max_transactions=1,
+                ),
+            ),
+        )
+        token = token_resp.get("accessToken", "")
+        if token:
+            _analytics_mod.record_tool_call("nevermined", "ok")
+            logger.info(f"[card-delegation] Token obtained — {pm.brand} ending {pm.last4}")
+        return token
+    except Exception as e:
+        _analytics_mod.record_tool_call("nevermined", "error")
+        logger.warning(f"[card-delegation] Token generation failed: {e} — falling back to crypto token")
+        return _get_buyer_token(plan_id, agent_id)
 
 
 async def _call_own_audit(endpoint_url: str, sample_query: str) -> str:
@@ -708,37 +755,41 @@ def _resolve_target_url(endpoint_url: str) -> str:
     return f"{endpoint_url.rstrip('/')}/data"
 
 
-def _parse_x402_payment_required(response: httpx.Response, fallback_plan_id: str, fallback_agent_id: str) -> tuple[str, str]:
+def _parse_x402_payment_required(response: httpx.Response, fallback_plan_id: str, fallback_agent_id: str) -> tuple[str, str, str]:
     """Parse x402 payment requirements from a 402 response.
 
     Tries two locations per the x402 spec and common implementations:
       1. `payment-required` response header (base64-encoded JSON) — Nevermined reference impl
       2. Response body JSON at `payment_required.accepts[0]` — AbilityAI / some others
       3. Body top-level `plan_id` / `agentId` fields — simple fallback
-    Returns (plan_id, agent_id), falling back to the provided values if nothing found.
+    Returns (plan_id, agent_id, scheme) where scheme is e.g. "nvm:erc4337" or "nvm:card-delegation".
     """
     import base64 as _b64
     plan_id = fallback_plan_id
     agent_id = fallback_agent_id
+    scheme = "nvm:erc4337"  # default — crypto/USDC
 
-    def _extract_from_accepts(accepts: list) -> tuple[str, str]:
+    def _extract_from_accepts(accepts: list) -> tuple[str, str, str]:
         if not accepts:
-            return plan_id, agent_id
-        # Prefer the plan that matches our fallback (i.e. the one we're subscribed to)
+            return plan_id, agent_id, scheme
+        # Prefer card-delegation if available (fiat is more flexible for the buyer)
+        card_entry = next((a for a in accepts if a.get("scheme") == "nvm:card-delegation"), None)
+        # Otherwise prefer the plan that matches our fallback (already subscribed)
         matching = next((a for a in accepts if a.get("planId") == fallback_plan_id), None)
-        a = matching or accepts[0]
+        a = card_entry or matching or accepts[0]
         pid = a.get("planId", plan_id) or plan_id
         aid = (a.get("extra") or {}).get("agentId", agent_id) or agent_id
-        return pid, aid
+        sc = a.get("scheme", scheme) or scheme
+        return pid, aid, sc
 
     # 1. `payment-required` header (canonical x402 — base64 JSON)
     header_val = response.headers.get("payment-required", "")
     if header_val:
         try:
             decoded = json.loads(_b64.b64decode(header_val + "==").decode())
-            plan_id, agent_id = _extract_from_accepts(decoded.get("accepts", []))
-            logger.info(f"[x402] parsed from header: plan={plan_id[:20]}… agent={agent_id[:20]}…")
-            return plan_id, agent_id
+            plan_id, agent_id, scheme = _extract_from_accepts(decoded.get("accepts", []))
+            logger.info(f"[x402] parsed from header: plan={plan_id[:20]}… scheme={scheme}")
+            return plan_id, agent_id, scheme
         except Exception as e:
             logger.debug(f"[x402] header parse failed: {e}")
 
@@ -747,16 +798,16 @@ def _parse_x402_payment_required(response: httpx.Response, fallback_plan_id: str
         body = response.json()
         pr_obj = body.get("payment_required") or body.get("paymentRequired")
         if isinstance(pr_obj, dict):
-            plan_id, agent_id = _extract_from_accepts(pr_obj.get("accepts", []))
-            logger.info(f"[x402] parsed from body.payment_required: plan={plan_id[:20]}… agent={agent_id[:20]}…")
-            return plan_id, agent_id
+            plan_id, agent_id, scheme = _extract_from_accepts(pr_obj.get("accepts", []))
+            logger.info(f"[x402] parsed from body.payment_required: plan={plan_id[:20]}… scheme={scheme}")
+            return plan_id, agent_id, scheme
         # Simple body top-level fields
         plan_id = body.get("plan_id", plan_id) or plan_id
         agent_id = body.get("agentId", body.get("agent_id", agent_id)) or agent_id
     except Exception:
         pass
 
-    return plan_id, agent_id
+    return plan_id, agent_id, scheme
 
 
 async def _call_external_service(endpoint_url: str, query: str, plan_id: str, agent_id: str = "") -> str:
@@ -795,12 +846,13 @@ async def _call_external_service(endpoint_url: str, query: str, plan_id: str, ag
         # ── Step 1: Send WITHOUT token to discover x402 payment requirements ──
         real_plan_id = plan_id
         real_agent_id = agent_id
+        real_scheme = "nvm:erc4337"
         if not DEMO_MODE:
             try:
                 probe = await client.post(target, json=body, headers=headers_base, timeout=12.0)
                 if probe.status_code == 402:
                     # Parse `payment-required` header (base64 JSON) per x402 spec
-                    real_plan_id, real_agent_id = _parse_x402_payment_required(probe, plan_id, agent_id)
+                    real_plan_id, real_agent_id, real_scheme = _parse_x402_payment_required(probe, plan_id, agent_id)
                 elif probe.status_code == 200:
                     # Endpoint is open / free-tier — no payment needed
                     try:
@@ -823,17 +875,19 @@ async def _call_external_service(endpoint_url: str, query: str, plan_id: str, ag
         if not DEMO_MODE and real_plan_id:
             subscription_info = _ensure_plan_subscribed(real_plan_id)
             checkout_url = subscription_info.get("checkout_url", "")
-            # ── Step 3: Get x402 access token ──
-            # Always attempt token generation even if subscription check failed —
-            # card-delegation plans (nvm:card-delegation) don't require a pre-subscription;
-            # get_x402_access_token() works directly and charges the saved card per-request.
-            token = _get_buyer_token(real_plan_id, real_agent_id)
+            # ── Step 3: Get x402 access token — scheme-aware ──
+            # nvm:card-delegation → charge enrolled Stripe card per-request (no pre-subscription needed)
+            # nvm:erc4337         → use USDC wallet (requires prior plan subscription)
+            if real_scheme == "nvm:card-delegation":
+                token = _get_card_delegation_token(real_plan_id, real_agent_id)
+            else:
+                token = _get_buyer_token(real_plan_id, real_agent_id)
             if token:
                 if is_mcp:
                     headers["authorization"] = f"Bearer {token}"
                 else:
                     headers["payment-signature"] = token
-                logger.info(f"[x402] token attached for {vendor} (subscribed={subscription_info.get('subscribed')}, new_sub={subscription_info.get('was_new')})")
+                logger.info(f"[x402] token attached for {vendor} scheme={real_scheme} (subscribed={subscription_info.get('subscribed')}, new_sub={subscription_info.get('was_new')})")
             else:
                 logger.warning(f"[x402] no token for {vendor}: {subscription_info.get('error','')[:80]}")
 
