@@ -4,7 +4,7 @@ import logging
 
 import httpx
 
-logger = logging.getLogger("agentaudit.apify")
+logger = logging.getLogger("gtmagent.apify")
 
 APIFY_STORE_ACTOR = "louisdeconinck~apify-store-scraper-api"
 APIFY_BASE = "https://api.apify.com/v2"

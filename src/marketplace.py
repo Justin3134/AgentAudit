@@ -6,7 +6,7 @@ import logging
 
 import httpx
 
-logger = logging.getLogger("agentaudit.marketplace")
+logger = logging.getLogger("gtmagent.marketplace")
 
 DISCOVERY_URL = "https://nevermined.ai/hackathon/register/api/discover"
 

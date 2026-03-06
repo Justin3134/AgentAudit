@@ -1,4 +1,4 @@
-"""AgentAudit Seller — FastAPI app with Nevermined payment-gated endpoint.
+"""GTMAgent Seller — FastAPI app with Nevermined payment-gated endpoint.
 
 Primary endpoint:
   POST /data  (1 credit)  — Autonomous Business Intelligence
@@ -30,9 +30,9 @@ from src import analytics as _analytics_mod
 from src import subgraph as _subgraph
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("agentaudit.seller")
+logger = logging.getLogger("gtmagent.seller")
 
-app = FastAPI(title="AgentAudit", description="Autonomous Business Intelligence — describe your idea, we find, audit, buy, and deliver a strategy")
+app = FastAPI(title="GTMAgent", description="Autonomous Business Intelligence — describe your idea, we find, audit, buy, and deliver a strategy")
 
 app.add_middleware(
     CORSMiddleware,
@@ -57,7 +57,7 @@ async def _gate(request: Request, endpoint: str, credits: int) -> Optional[JSONR
     """Return a 402 JSONResponse if payment fails, or None on success.
 
     Tries each plan in NVM_ACCEPTED_PLAN_IDS in order so that both the primary
-    AgentAudit plan and the AgentAuditUSDC plan (and any future plans) are
+    GTMAgent plan and the GTMAgentUSDC plan (and any future plans) are
     accepted without requiring buyers to use a specific plan.
     """
     if DEMO_MODE:
@@ -198,9 +198,9 @@ async def _zeroclick_ad(endpoint_url: str, audit_result: dict) -> dict:
     ad = {
         "id": str(_uuid.uuid4()),
         "sponsor": "ZeroClick.ai",
-        "title": f"Quality verified by AgentAudit — {score:.0%} score",
+        "title": f"Quality verified by GTMAgent — {score:.0%} score",
         "message": (
-            f"This agent scored {score:.0%} on AgentAudit. "
+            f"This agent scored {score:.0%} on GTMAgent. "
             "ZeroClick native ads — contextual monetization for AI-native services."
         ),
         "cta": "Learn about ZeroClick",
@@ -218,13 +218,13 @@ async def _zeroclick_ad(endpoint_url: str, audit_result: dict) -> dict:
 
 @app.get("/sample")
 async def sample_endpoint():
-    """Free sample — shows buyers what AgentAudit returns before they pay."""
+    """Free sample — shows buyers what GTMAgent returns before they pay."""
     return {
-        "service": "AgentAudit",
+        "service": "GTMAgent",
         "version": "2.0.0",
         "description": (
             "Autonomous Business Intelligence — describe your business idea and "
-            "AgentAudit searches the Nevermined marketplace + Apify, audits candidates, "
+            "GTMAgent searches the Nevermined marketplace + Apify, audits candidates, "
             "purchases the best services, and delivers an actionable strategy."
         ),
         "how_to_use": {
@@ -320,7 +320,7 @@ async def data_endpoint(request: Request):
 async def pricing():
     """Service pricing information (free)."""
     return {
-        "service": "AgentAudit",
+        "service": "GTMAgent",
         "description": (
             "Autonomous Business Intelligence — describe your idea, "
             "we search the marketplace, audit services, buy the best ones, "
@@ -355,7 +355,7 @@ async def credits_balance():
         payments = get_buyer_payments()
         if payments and NVM_PLAN_ID:
             bal = payments.plans.get_plan_balance(NVM_PLAN_ID)
-            result["plans"]["AgentAudit"] = {
+            result["plans"]["GTMAgent"] = {
                 "plan_id": NVM_PLAN_ID,
                 "balance": bal.balance if bal else 0,
                 "is_subscriber": bal.is_subscriber if bal else False,
@@ -375,10 +375,10 @@ async def stats():
 async def services():
     """Machine-readable service discovery (free)."""
     return {
-        "team_name": "AgentAudit",
+        "team_name": "GTMAgent",
         "description": (
             "Autonomous Business Intelligence agent. Describe your business idea "
-            "and AgentAudit searches the Nevermined marketplace + Apify, audits "
+            "and GTMAgent searches the Nevermined marketplace + Apify, audits "
             "candidates, purchases the best services via x402, and delivers a "
             "synthesized business strategy with ROI analysis."
         ),
@@ -421,13 +421,13 @@ async def chain():
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "service": "AgentAudit", "version": "1.0.0"}
+    return {"status": "healthy", "service": "GTMAgent", "version": "1.0.0"}
 
 
 def main():
     if DEMO_MODE:
         logger.info("*** DEMO MODE — payment verification disabled ***")
-    logger.info(f"Starting AgentAudit seller on port {SELLER_PORT}")
+    logger.info(f"Starting GTMAgent seller on port {SELLER_PORT}")
     logger.info("Endpoint: POST /data (1 credit) — business idea → full strategy pipeline")
     uvicorn.run(app, host="0.0.0.0", port=SELLER_PORT)
 

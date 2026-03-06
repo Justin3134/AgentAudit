@@ -16,7 +16,7 @@ import httpx
 
 from src.config import MINDRA_API_KEY, MINDRA_WORKFLOW_SLUG
 
-logger = logging.getLogger("agentaudit.mindra")
+logger = logging.getLogger("gtmagent.mindra")
 
 MINDRA_BASE = "https://api.mindra.co"
 
@@ -115,7 +115,7 @@ async def approve(execution_id: str, approval_id: str, reason: str = "") -> bool
         resp = await client.post(
             url,
             headers={"x-api-key": MINDRA_API_KEY, "Content-Type": "application/json"},
-            json={"reason": reason or "Auto-approved by AgentAudit"},
+            json={"reason": reason or "Auto-approved by GTMAgent"},
         )
         ok = resp.status_code in (200, 204)
         if not ok:
@@ -130,7 +130,7 @@ async def reject(execution_id: str, approval_id: str, reason: str = "") -> bool:
         resp = await client.post(
             url,
             headers={"x-api-key": MINDRA_API_KEY, "Content-Type": "application/json"},
-            json={"reason": reason or "Rejected by AgentAudit budget policy"},
+            json={"reason": reason or "Rejected by GTMAgent budget policy"},
         )
         ok = resp.status_code in (200, 204)
         if not ok:

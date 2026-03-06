@@ -21,7 +21,7 @@ const About = () => {
             <span className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">The Problem</span>
           </div>
           <h2 className="font-serif text-4xl md:text-5xl text-foreground mb-8">
-            About QSVA
+            About GTMAgent
           </h2>
           <div className="space-y-5 text-muted-foreground leading-relaxed text-base md:text-lg">
             <p>
@@ -47,7 +47,7 @@ const About = () => {
           className="border-l-2 border-foreground pl-8 py-2 max-w-3xl"
         >
           <p className="font-serif text-xl md:text-2xl text-foreground leading-relaxed italic">
-            "QSVA does not replace autonomy.
+            "GTMAgent does not replace autonomy.
             It defines the boundary where autonomy must stop."
           </p>
         </motion.div>
@@ -64,7 +64,7 @@ const About = () => {
             to="/about"
             className="group inline-flex items-center text-sm font-medium text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground transition-colors"
           >
-            Read the full QSVA thesis
+            Read the full GTMAgent thesis
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="ml-2 transition-transform duration-300 group-hover:translate-x-1">
               <path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>

@@ -70,7 +70,7 @@ const BuiltFor = () => {
             Built for Autonomous Execution Risk
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl">
-            QSVA is built for teams deploying agentic systems where mistakes are irreversible,
+            GTMAgent is built for teams deploying agentic systems where mistakes are irreversible,
             including:
           </p>
         </div>
@@ -107,7 +107,7 @@ const BuiltFor = () => {
             rel="noopener noreferrer"
             className="text-sm font-medium text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground transition-colors"
           >
-            Talk to the QSVA Team →
+            Talk to the GTMAgent Team →
           </a>
         </div>
       </div>

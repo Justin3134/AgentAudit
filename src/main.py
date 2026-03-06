@@ -1,4 +1,4 @@
-"""AgentAudit — combined app: seller + buyer + dashboard in one process.
+"""GTMAgent — combined app: seller + buyer + dashboard in one process.
 
 Run locally:  poetry run app
 Deploy:       Render (see render.yaml)
@@ -61,18 +61,18 @@ from src.buyer import (  # noqa: E402
 from src.web import DASHBOARD_HTML  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("agentaudit.main")
+logger = logging.getLogger("gtmagent.main")
 
 
 # ---------------------------------------------------------------------------
 # Lifespan — start buyer loop as background task
 # ---------------------------------------------------------------------------
 
-RENDER_URL = "https://agentaudit.onrender.com"
+RENDER_URL = "https://gtmagent.onrender.com"
 
 
 async def _register_with_discovery():
-    """Register AgentAudit as a seller in the Nevermined hackathon Discovery API.
+    """Register GTMAgent as a seller in the Nevermined hackathon Discovery API.
 
     Always registers with the public Render URL so other teams can discover and purchase.
     """
@@ -84,8 +84,8 @@ async def _register_with_discovery():
         import httpx
         payload = {
             "side": "sell",
-            "name": "AgentAudit",
-            "teamName": "AgentAudit",
+            "name": "GTMAgent",
+            "teamName": "GTMAgent",
             "category": "AI/ML",
             "description": (
                 "Autonomous Business Intelligence Agent. POST /data with a business idea "
@@ -118,7 +118,7 @@ async def _register_with_discovery():
 async def lifespan(app: FastAPI):
     asyncio.create_task(_register_with_discovery())
     task = asyncio.create_task(_buyer_loop())
-    logger.info(f"AgentAudit running on port {PORT}")
+    logger.info(f"GTMAgent running on port {PORT}")
     yield
     task.cancel()
     try:
@@ -131,7 +131,7 @@ async def lifespan(app: FastAPI):
 # App
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="AgentAudit", description="Autonomous Business Intelligence — describe your idea, we find, audit, buy, and deliver a strategy", lifespan=lifespan)
+app = FastAPI(title="GTMAgent", description="Autonomous Business Intelligence — describe your idea, we find, audit, buy, and deliver a strategy", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

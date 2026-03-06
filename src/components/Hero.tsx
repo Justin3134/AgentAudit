@@ -73,7 +73,7 @@ const Hero = () => {
                 rel="noopener noreferrer"
                 className="group inline-flex items-center px-7 py-3.5 rounded-md bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10"
               >
-                Talk to the QSVA Team
+                Talk to the GTMAgent Team
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="ml-2 transition-transform duration-300 group-hover:translate-x-1">
                   <path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>

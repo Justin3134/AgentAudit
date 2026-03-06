@@ -1,11 +1,11 @@
-"""AgentAudit Dashboard — chat interface + stats sidebar."""
+"""GTMAgent Dashboard — chat interface + stats sidebar."""
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-dashboard_app = FastAPI(title="AgentAudit Dashboard")
+dashboard_app = FastAPI(title="GTMAgent Dashboard")
 dashboard_app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 DASHBOARD_HTML = """\
@@ -13,7 +13,7 @@ DASHBOARD_HTML = """\
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AgentAudit</title>
+<title>GTMAgent</title>
 <style>
 :root { --bg: #000; --fg: #fff; --dim: #555; --dim2: #333; --border: #1a1a1a; --green: #34d058; --orange: #e3b341; --red: #f85149; --input-bg: #0a0a0a; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -534,7 +534,7 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 <body>
 <div class="shell">
   <header>
-    <h1>AgentAudit</h1>
+    <h1>GTMAgent</h1>
     <div class="header-right">
       <div class="svc-status" title="Seller endpoint status"><span class="dot" id="dot-seller"></span><span id="st-seller">seller</span></div>
       <div class="svc-status" title="Buyer agent status"><span class="dot" id="dot-buyer"></span><span id="st-buyer">buyer</span></div>
@@ -579,7 +579,7 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
     <div id="view-chat" class="chat-panel" style="position:absolute;inset:0">
     <div class="chat-messages" id="messages">
       <div class="welcome">
-        <strong>AgentAudit</strong> — Autonomous Business Intelligence<br><br>
+        <strong>GTMAgent</strong> — Autonomous Business Intelligence<br><br>
         Describe a business goal and I will search the marketplace, evaluate options, purchase the best services via Nevermined, and return a strategy.<br><br>
         Try asking:<br>
         &bull; I want to build a fintech AI assistant<br>

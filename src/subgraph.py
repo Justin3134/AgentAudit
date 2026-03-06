@@ -11,7 +11,7 @@ import logging
 
 import httpx
 
-logger = logging.getLogger("agentaudit.subgraph")
+logger = logging.getLogger("gtmagent.subgraph")
 
 SUBGRAPH_URL = (
     "https://api.goldsky.com/api/public/project_cmmdxa29pqd7301x809tn06ng"

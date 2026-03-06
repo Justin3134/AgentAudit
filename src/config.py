@@ -7,7 +7,7 @@ _env_paths = [
     Path(".env"),
     Path(__file__).parent / ".env",
     Path(__file__).parent.parent / ".env",
-    Path(__file__).parent.parent / "hackathons/agents/agent-audit/.env",
+    Path(__file__).parent.parent / "hackathons/agents/gtm-agent/.env",
 ]
 for _p in _env_paths:
     if _p.exists():
@@ -21,7 +21,7 @@ NVM_API_KEY = os.environ.get("NVM_API_KEY", "")
 NVM_ENVIRONMENT = os.environ.get("NVM_ENVIRONMENT", "sandbox")
 NVM_PLAN_ID = os.environ.get("NVM_PLAN_ID", "")
 NVM_AGENT_ID = os.environ.get("NVM_AGENT_ID", "")
-# Additional accepted plan IDs (e.g. AgentAuditUSDC) — comma-separated
+# Additional accepted plan IDs (e.g. GTMAgentUSDC) — comma-separated
 _extra = os.environ.get("NVM_EXTRA_PLAN_IDS", "")
 NVM_EXTRA_PLAN_IDS: list[str] = [p.strip() for p in _extra.split(",") if p.strip()]
 # All plan IDs this server accepts (primary + extras)
@@ -39,7 +39,7 @@ EXA_API_KEY = os.environ.get("EXA_API_KEY", "")
 ZEROCLICK_API_KEY = os.environ.get("ZEROCLICK_API_KEY", "")
 APIFY_API_KEY = os.environ.get("APIFY_API_KEY", "")
 MINDRA_API_KEY = os.environ.get("MINDRA_API_KEY", "")
-MINDRA_WORKFLOW_SLUG = os.environ.get("MINDRA_WORKFLOW_SLUG", "agent-audit")
+MINDRA_WORKFLOW_SLUG = os.environ.get("MINDRA_WORKFLOW_SLUG", "gtm-agent")
 
 MARKETPLACE_CSV_URL = os.environ.get("MARKETPLACE_CSV_URL", "")
 

@@ -129,15 +129,15 @@ serve(async (req) => {
             Authorization: `Bearer ${resendKey}`,
           },
           body: JSON.stringify({
-            from: "QSVA Waitlist <waitlist@qsva.io>",
-            to: [RECIPIENT, "ben@qsva.io", "support@qsva.io"],
+            from: "GTMAgent Waitlist <waitlist@gtmagent.io>",
+            to: [RECIPIENT, "ben@gtmagent.io", "support@gtmagent.io"],
             subject: `New Waitlist Signup: ${safeEmail}`,
             html: `
               <h2>New Waitlist Submission</h2>
               <p><strong>Email:</strong> ${safeEmail}</p>
               ${safeMessage ? `<p><strong>Message:</strong> ${safeMessage}</p>` : ""}
               <hr />
-              <p style="color: #888; font-size: 12px;">Sent from QSVA waitlist form</p>
+              <p style="color: #888; font-size: 12px;">Sent from GTMAgent waitlist form</p>
             `,
           }),
         });

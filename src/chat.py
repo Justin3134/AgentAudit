@@ -33,7 +33,7 @@ from src.marketplace import fetch_marketplace
 from src import analytics as _analytics_mod
 from src import mindra as _mindra
 
-logger = logging.getLogger("agentaudit.chat")
+logger = logging.getLogger("gtmagent.chat")
 
 
 async def _track_zc_impression_bg(offer_id: str) -> None:
@@ -109,7 +109,7 @@ async def _attach_zeroclick_ad(endpoint_url: str, score: float) -> dict | None:
         "sponsor": "ZeroClick.ai",
         "title": f"Quality verified — {score:.0%} audit score",
         "message": (
-            f"This service scored {score:.0%} on AgentAudit. "
+            f"This service scored {score:.0%} on GTMAgent. "
             "ZeroClick native ads — contextual monetization for AI-native services."
         ),
         "cta": "Learn about ZeroClick",
@@ -124,7 +124,7 @@ async def _attach_zeroclick_ad(endpoint_url: str, score: float) -> dict | None:
 
 OWN_SERVICES = [
     {
-        "team_name": "AgentAudit",
+        "team_name": "GTMAgent",
         "endpoint_url": AUDIT_SERVICE_URL,
         "description": "Autonomous Business Intelligence — describe a business idea and get marketplace search, Apify tools, quality audits, purchases, and actionable strategy.",
         "plan_id": NVM_PLAN_ID,
@@ -138,7 +138,7 @@ OWN_SERVICES = [
 ]
 
 SYSTEM_PROMPT = """\
-You are AgentAudit — an Autonomous Business Intelligence Agent that searches the Nevermined marketplace, evaluates AI agents, purchases the best ones, and delivers a synthesized business strategy.
+You are GTMAgent — an Autonomous Business Intelligence Agent that searches the Nevermined marketplace, evaluates AI agents, purchases the best ones, and delivers a synthesized business strategy.
 
 ## TOOL SELECTION
 
@@ -152,12 +152,17 @@ You are AgentAudit — an Autonomous Business Intelligence Agent that searches t
 | "buy from X" | **buy_service** |
 | "orchestrate" / "Mindra" / "workflow" / "self-healing" | **mindra_orchestrate** |
 
-## Budget — ALWAYS ask first
+## Greetings and small-talk
 
-When the user describes a business goal and has NOT mentioned a budget or credit amount in their message,
+If the user says "hi", "hello", "hey", or any message that does NOT contain a business goal, respond with a short friendly intro — do NOT ask about a budget, do NOT assume any goal. Example:
+> "Hey! Describe a business or goal you want to build and I'll find, evaluate, and purchase the best AI agents for it — then deliver you a strategy."
+
+## Budget — ask ONLY when user has stated a goal
+
+When the user describes a specific business goal and has NOT mentioned a budget or credit amount in their message,
 respond with ONE short message asking for budget BEFORE calling any tool:
 
-> "Got it — **[goal]**. Before I start purchasing agents, what's your budget?
+> "Got it — **[goal]**. What's your budget?
 > e.g. **3 credits** (quick test) · **5 credits** (solid foundation) · **10 credits** (full coverage)
 > *(1 credit ≈ $0.05–$1 depending on the plan)*"
 
@@ -229,11 +234,11 @@ Key: `purchased: true` = a REAL Nevermined blockchain transaction (order_plan).
 - Purchasing these plans = buying into the Trinity agent network
 - The orchestration grid in the UI shows Trinity: Nexus and Trinity: Social as live agents
 
-## What AgentAudit sells (your own product)
+## What GTMAgent sells (your own product)
 - `/audit` — quality score any AI endpoint. 2 credits
 - `/compare` — compare two endpoints. 3 credits  
 - `/monitor` — health check. 1 credit
-- Deployed at https://agentaudit.onrender.com
+- Deployed at https://gtmagent.onrender.com
 
 ## CONTINUOUS OPERATION — YOU ARE A BUSINESS, NOT A CHATBOT
 
@@ -721,7 +726,7 @@ def _get_card_delegation_token(plan_id: str, agent_id: str = "") -> str:
 
 async def _call_own_audit(endpoint_url: str, sample_query: str) -> str:
     """Call our own /audit endpoint. Uses buyer account key for Nevermined token; falls back to direct audit."""
-    headers = {"Content-Type": "application/json", "x-caller-id": "AgentAudit-Chat"}
+    headers = {"Content-Type": "application/json", "x-caller-id": "GTMAgent-Chat"}
 
     if not DEMO_MODE:
         token = _get_buyer_token(NVM_PLAN_ID, NVM_AGENT_ID)
@@ -742,7 +747,7 @@ async def _call_own_audit(endpoint_url: str, sample_query: str) -> str:
             data["_purchased"] = True
             data["_payment_method"] = "nevermined_x402"
             _analytics_mod.record_purchase(
-                vendor="AgentAudit (self)",
+                vendor="GTMAgent (self)",
                 endpoint=f"{AUDIT_SERVICE_URL}/data",
                 credits=1,
                 score=data.get("overall_score", 0),
@@ -766,14 +771,14 @@ async def _call_own_audit(endpoint_url: str, sample_query: str) -> str:
     result["_note"] = "Audit ran directly — add NVM_BUYER_API_KEY to .env for real Nevermined transactions"
     # Record locally so sidebar shows the activity
     _analytics_mod.record_purchase(
-        vendor="AgentAudit (self)",
+        vendor="GTMAgent (self)",
         endpoint=f"{AUDIT_SERVICE_URL}/data",
         credits=1,
         score=result.get("overall_score", 0),
         recommendation=result.get("recommendation", ""),
         payment_method="direct_fallback",
     )
-    _analytics_mod.record_sale("/data", 1, "AgentAudit-Chat", "direct_fallback")
+    _analytics_mod.record_sale("/data", 1, "GTMAgent-Chat", "direct_fallback")
     return json.dumps(result)
 
 
@@ -783,12 +788,12 @@ async def _call_own_compare(url1: str, url2: str, query: str) -> str:
     from src.config import OPENAI_API_KEY as _oai_key, MODEL_ID as _model, EXA_API_KEY as _exa
     result = await run_compare(url1, url2, query, _oai_key, _model, _exa)
     _analytics_mod.record_purchase(
-        vendor="AgentAudit (self)",
+        vendor="GTMAgent (self)",
         endpoint=f"{AUDIT_SERVICE_URL}/data",
         credits=1,
         payment_method="direct",
     )
-    _analytics_mod.record_sale("/data", 1, "AgentAudit-Chat", "direct")
+    _analytics_mod.record_sale("/data", 1, "GTMAgent-Chat", "direct")
     return json.dumps(result)
 
 
@@ -890,7 +895,7 @@ async def _call_external_service(endpoint_url: str, query: str, plan_id: str, ag
     else:
         body = {"query": query, "message": query}
     headers_base = {"Content-Type": "application/json", "Accept": "application/json",
-                    "x-caller-id": "AgentAudit-Buyer"}
+                    "x-caller-id": "GTMAgent-Buyer"}
 
     async with httpx.AsyncClient(timeout=20.0) as client:
 
@@ -1054,7 +1059,7 @@ async def _exec_mindra_orchestrate(task: str, workflow_slug: str = "") -> str:
     result = await _mindra.run_and_collect(
         task=task,
         metadata={
-            "source": "agentaudit",
+            "source": "gtmagent",
             "integration": "nevermined_x402",
         },
         workflow_slug=workflow_slug,
@@ -1117,7 +1122,7 @@ async def _exec_parallel_agents(query: str, agent_count: int = 3) -> str:
         mindra_result = await _mindra.run_and_collect(
             task=mindra_task,
             metadata={
-                "source": "agentaudit_parallel",
+                "source": "gtmagent_parallel",
                 "agent_count": agent_count,
                 "query": query,
             },
@@ -1269,7 +1274,7 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                 "Steps: market research, service discovery, quality audit, purchasing, synthesis.\n"
                 "Monitor for anomalies in audit scores and agent responses."
             ),
-            metadata={"source": "agentaudit", "goal": goal, "budget": budget_credits},
+            metadata={"source": "gtmagent", "goal": goal, "budget": budget_credits},
             auto_approve=True,
             timeout_seconds=90.0,
         ))
@@ -2014,7 +2019,7 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
             report["zeroclick_ad"] = {
                 "id": str(_uuid.uuid4()),
                 "sponsor": "ZeroClick.ai",
-                "title": f"AgentAudit — {top_score:.0%} quality verified",
+                "title": f"GTMAgent — {top_score:.0%} quality verified",
                 "message": "Contextual native ads for AI-native services. ZeroClick monetizes every agent interaction.",
                 "cta": "Learn about ZeroClick",
                 "click_url": "https://zeroclick.ai",
@@ -2182,7 +2187,7 @@ async def chat_stream(message: str, history: list[dict], budget_credits: int = 5
                             _zc_ad = {
                                 "id": str(_uuid.uuid4()),
                                 "sponsor": "ZeroClick.ai",
-                                "title": "AgentAudit — verified purchase complete",
+                                "title": "GTMAgent — verified purchase complete",
                                 "message": "Your autonomous agent just completed a Nevermined x402 purchase. ZeroClick monetizes every AI service interaction.",
                                 "cta": "Learn about ZeroClick",
                                 "click_url": "https://zeroclick.ai",

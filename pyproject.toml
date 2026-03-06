@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "agent-audit"
+name = "gtm-agent"
 version = "0.1.0"
-description = "AgentAudit — Quality scoring and trust layer for the agent economy"
+description = "GTMAgent — Quality scoring and trust layer for the agent economy"
 package-mode = false
 
 [tool.poetry.dependencies]

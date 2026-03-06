@@ -1,4 +1,4 @@
-"""AgentAudit Buyer — LangGraph state machine for autonomous marketplace purchasing.
+"""GTMAgent Buyer — LangGraph state machine for autonomous marketplace purchasing.
 
 Nodes:
   fetch_marketplace → filter_new → audit_services → mindra_validate
@@ -43,7 +43,7 @@ from src import mindra as _mindra
 from src.config import ZEROCLICK_API_KEY
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("agentaudit.buyer")
+logger = logging.getLogger("gtmagent.buyer")
 
 # ---------------------------------------------------------------------------
 # Persistent state
@@ -154,7 +154,7 @@ async def audit_services_node(state: BuyerState) -> dict:
         _log(state, f"Auditing {team} ({url})...")
 
         try:
-            headers = {"x-caller-id": "AgentAudit-Buyer"}
+            headers = {"x-caller-id": "GTMAgent-Buyer"}
             if not DEMO_MODE:
                 buyer_payments = get_buyer_payments()
                 if buyer_payments:
@@ -222,7 +222,7 @@ async def mindra_validate_node(state: BuyerState) -> dict:
     try:
         result = await _mindra.run_and_collect(
             task=task,
-            metadata={"source": "agentaudit_buyer", "step": "anomaly_detection"},
+            metadata={"source": "gtmagent_buyer", "step": "anomaly_detection"},
             auto_approve=True,
             timeout_seconds=30.0,
         )
@@ -334,7 +334,7 @@ async def score_and_decide_node(state: BuyerState) -> dict:
         # We track impressions for analytics; click_url is the advertiser's URL.
         # ---------------------------------------------------------------
         ad = result.get("ad")
-        if ad and ad.get("sponsor") != "AgentAudit":
+        if ad and ad.get("sponsor") != "GTMAgent":
             # Normalize: support both old cta_url/endpoint_url and new click_url field
             ad_url = ad.get("click_url") or ad.get("endpoint_url") or ad.get("cta_url", "")
             sponsor = ad.get("sponsor", "Unknown")
@@ -400,7 +400,7 @@ async def execute_purchases_node(state: BuyerState) -> dict:
             continue
 
         try:
-            headers = {"x-caller-id": "AgentAudit-Buyer"}
+            headers = {"x-caller-id": "GTMAgent-Buyer"}
             used_scheme = "no_payment"
             if not DEMO_MODE:
                 buyer_payments = get_buyer_payments()
@@ -412,7 +412,7 @@ async def execute_purchases_node(state: BuyerState) -> dict:
                             probe = await probe_client.post(
                                 f"{url.rstrip('/')}/data",
                                 json={"query": "probe"},
-                                headers={"x-caller-id": "AgentAudit-Buyer"},
+                                headers={"x-caller-id": "GTMAgent-Buyer"},
                             )
                             if probe.status_code == 402:
                                 import base64 as _b64
@@ -464,8 +464,8 @@ async def execute_purchases_node(state: BuyerState) -> dict:
                         _log(state, f"  token error for {team}: {te}")
 
             query = (
-                "AgentAudit ZeroClick referral purchase" if is_ad_driven
-                else "AgentAudit ROI verification purchase"
+                "GTMAgent ZeroClick referral purchase" if is_ad_driven
+                else "GTMAgent ROI verification purchase"
             )
             async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.post(
@@ -594,7 +594,7 @@ async def _buyer_loop():
 # Dashboard API
 # ---------------------------------------------------------------------------
 
-buyer_app = FastAPI(title="AgentAudit Buyer")
+buyer_app = FastAPI(title="GTMAgent Buyer")
 buyer_app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
@@ -703,7 +703,7 @@ async def api_chat(request: Request):
 
 @buyer_app.get("/health")
 async def health():
-    return {"status": "healthy", "service": "AgentAudit-Buyer"}
+    return {"status": "healthy", "service": "GTMAgent-Buyer"}
 
 # ---------------------------------------------------------------------------
 # Entry point
@@ -717,7 +717,7 @@ async def _start():
 
 
 def main():
-    logger.info(f"Starting AgentAudit buyer on port {BUYER_PORT}")
+    logger.info(f"Starting GTMAgent buyer on port {BUYER_PORT}")
     logger.info(f"Marketplace: {MARKETPLACE_CSV_URL or '(not set)'}")
     logger.info(f"Audit interval: {AUDIT_INTERVAL_SECONDS}s")
     logger.info(f"Budget: {MAX_DAILY_SPEND}/day, {MAX_PER_REQUEST}/req, {MAX_VENDOR_PERCENT*100:.0f}% vendor cap")

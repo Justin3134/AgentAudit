@@ -102,7 +102,7 @@ const AboutPage = () => {
                 transition={{ duration: 0.5, delay: 0.25 }}
                 className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground mb-5"
               >
-                The QSVA Thesis
+                The GTMAgent Thesis
               </motion.p>
               <motion.h1
                 initial={{ opacity: 0, y: 20 }}
@@ -123,7 +123,7 @@ const AboutPage = () => {
               transition={{ duration: 0.6, delay: 0.5 }}
               className="text-muted-foreground text-base md:text-lg leading-relaxed max-w-md lg:pb-2"
             >
-              A comprehensive look at why agentic systems need a new authorization primitive — and how QSVA delivers it.
+              A comprehensive look at why agentic systems need a new authorization primitive — and how GTMAgent delivers it.
             </motion.p>
           </div>
         </div>
@@ -220,7 +220,7 @@ const AboutPage = () => {
               </div>
 
               <p className="text-foreground font-medium text-base md:text-lg">
-                QSVA exists to provide the control agentic systems require.
+                GTMAgent exists to provide the control agentic systems require.
               </p>
             </div>
           </div>
@@ -248,13 +248,13 @@ const AboutPage = () => {
               </h3>
               <div className="space-y-5 text-muted-foreground leading-relaxed text-base md:text-lg mb-10">
                 <p>
-                  QSVA introduces an authorization control architecture designed specifically for agentic systems.
+                  GTMAgent introduces an authorization control architecture designed specifically for agentic systems.
                 </p>
                 <p>
                   It operates after access is granted and immediately before execution, where decisions become irreversible.
                 </p>
                 <p>
-                  Instead of trusting sessions, devices, or prior authentication, QSVA cryptographically binds
+                  Instead of trusting sessions, devices, or prior authentication, GTMAgent cryptographically binds
                   a real human's approval to a specific action, producing proof that is:
                 </p>
               </div>
@@ -289,9 +289,9 @@ const AboutPage = () => {
           {/* Two columns: How + What */}
           <div className="grid md:grid-cols-2 gap-16 md:gap-20">
             <div ref={revealRef} className="about-fade">
-              <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-5">How QSVA Works</h3>
+              <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-5">How GTMAgent Works</h3>
               <p className="text-muted-foreground mb-8 leading-relaxed">
-                QSVA converts a human decision into cryptographic proof bound to a single action
+                GTMAgent converts a human decision into cryptographic proof bound to a single action
                 within an execution path. That proof:
               </p>
               <div className="space-y-4">
@@ -329,7 +329,7 @@ const AboutPage = () => {
               <div className="h-px w-12 bg-foreground" />
             </div>
             <p className="font-serif text-2xl md:text-3xl text-foreground leading-relaxed italic">
-              "QSVA does not replace autonomy.
+              "GTMAgent does not replace autonomy.
               <br />
               It defines the boundary where autonomy must stop."
             </p>
@@ -367,13 +367,13 @@ const AboutPage = () => {
                   Agentic systems require the same principle at execution time.
                 </p>
                 <p>
-                  QSVA ensures that as autonomous systems operate at machine speed, human authority
+                  GTMAgent ensures that as autonomous systems operate at machine speed, human authority
                   remains cryptographically enforced at the moments that matter.
                 </p>
               </div>
 
               <p className="mt-10 text-foreground font-semibold text-lg md:text-xl border-t border-border pt-8 leading-relaxed">
-                QSVA is the execution‑time authorization architecture required for agentic systems to scale safely.
+                GTMAgent is the execution‑time authorization architecture required for agentic systems to scale safely.
               </p>
 
               <div className="mt-12 flex flex-col sm:flex-row gap-4">
@@ -383,7 +383,7 @@ const AboutPage = () => {
                   rel="noopener noreferrer"
                   className="group inline-flex items-center px-7 py-3.5 rounded-md bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10"
                 >
-                  Talk to the QSVA Team
+                  Talk to the GTMAgent Team
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="ml-2 transition-transform duration-300 group-hover:translate-x-1">
                     <path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>

@@ -68,7 +68,7 @@ const Waitlist = () => {
             Join the Waitlist
           </h2>
           <p className="text-muted-foreground leading-relaxed mb-10">
-            Be among the first to access QSVA's execution‑time authorization platform.
+            Be among the first to access GTMAgent's execution‑time authorization platform.
             We're onboarding select design partners now.
           </p>
 

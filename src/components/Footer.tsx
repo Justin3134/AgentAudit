@@ -7,9 +7,9 @@ const Footer = () => {
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <img src={qsvaLogoBlack} alt="QSVA" className="h-6 w-auto opacity-50" />
+            <img src={qsvaLogoBlack} alt="GTMAgent" className="h-6 w-auto opacity-50" />
             <div className="w-px h-4 bg-border" />
-            <span className="text-sm text-muted-foreground">© 2026 QSVA. All rights reserved.</span>
+            <span className="text-sm text-muted-foreground">© 2026 GTMAgent. All rights reserved.</span>
           </div>
           <a
             href="https://www.linkedin.com/company/qsva"
