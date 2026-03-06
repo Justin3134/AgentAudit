@@ -1,7 +1,6 @@
 """Apify integration — search the Apify Store and run actors as additional marketplace services."""
 
 import logging
-from typing import Optional
 
 import httpx
 
@@ -11,32 +10,84 @@ APIFY_STORE_ACTOR = "louisdeconinck~apify-store-scraper-api"
 APIFY_BASE = "https://api.apify.com/v2"
 
 
+CATEGORY_KEYWORDS: dict[str, list[str]] = {
+    "Social Media": ["social", "instagram", "twitter", "tiktok", "facebook", "linkedin", "youtube", "influencer", "followers"],
+    "Marketing": ["marketing", "advertising", "ads", "seo", "campaign", "brand", "promote", "email marketing", "content marketing"],
+    "E-Commerce": ["ecommerce", "shop", "product", "amazon", "ebay", "shopify", "price", "store"],
+    "News": ["news", "article", "press", "media", "journalism", "trending"],
+    "Business": ["business", "company", "lead", "crm", "sales", "b2b", "enterprise"],
+    "Finance": ["finance", "stock", "crypto", "trading", "investment", "bank", "payment"],
+    "Data Extraction": ["scrape", "extract", "crawl", "data", "web scraping"],
+    "AI": ["ai", "machine learning", "llm", "gpt", "agent", "chatbot", "nlp"],
+}
+
+
+def _infer_category(query: str) -> str:
+    """Map a search query to the most relevant Apify Store category."""
+    q = query.lower()
+    best_cat = ""
+    best_score = 0
+    for cat, keywords in CATEGORY_KEYWORDS.items():
+        score = sum(1 for kw in keywords if kw in q)
+        if score > best_score:
+            best_score = score
+            best_cat = cat
+    return best_cat
+
+
 async def search_apify_store(
     query: str,
     apify_api_key: str,
-    category: str = "AI",
+    category: str = "",
     max_results: int = 8,
     pricing_model: str = "",
 ) -> list[dict]:
     """Search the Apify Store for actors matching the query.
 
     Returns a normalised list compatible with our marketplace entry format.
+    Category is auto-inferred from the query when not provided.
     """
     if not apify_api_key:
         return []
+
+    resolved_category = category if category else _infer_category(query)
+
     try:
+        payload: dict = {
+            "search": query,
+            "sortBy": "popularity",
+            "offset": 0,
+        }
+        if resolved_category:
+            payload["category"] = resolved_category
+        if pricing_model:
+            payload["pricingModel"] = pricing_model
+
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
                 f"{APIFY_BASE}/acts/{APIFY_STORE_ACTOR}/run-sync-get-dataset-items",
                 params={"token": apify_api_key},
-                json={
-                    "search": query,
-                    "sortBy": "popularity",
-                    "category": category if category else "AI",
-                    **({"pricingModel": pricing_model} if pricing_model else {}),
-                    "offset": 0,
-                },
+                json=payload,
             )
+            needs_retry = False
+            if resp.status_code not in (200, 201):
+                needs_retry = True
+            else:
+                try:
+                    first_items = resp.json()
+                    if not isinstance(first_items, list) or len(first_items) == 0:
+                        needs_retry = True
+                except Exception:
+                    needs_retry = True
+
+            if needs_retry and resolved_category:
+                logger.info(f"[apify] No results with category '{resolved_category}', retrying without category filter")
+                payload.pop("category", None)
+                resp = await client.post(
+                    f"{APIFY_BASE}/acts/{APIFY_STORE_ACTOR}/run-sync-get-dataset-items",
+                    params={"token": apify_api_key},
+                    json=payload,
+                )
             if resp.status_code not in (200, 201):
                 logger.warning(f"[apify] Store search returned {resp.status_code}")
                 return []

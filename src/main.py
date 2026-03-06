@@ -25,7 +25,7 @@ import os
 
 import uvicorn
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
@@ -174,7 +174,7 @@ app.add_api_route("/api/chat",      api_chat,      methods=["POST"])
 @app.get("/api/keys-status")
 async def keys_status():
     """Which API keys are configured — used by the dashboard to show live tool readiness."""
-    from src.config import OPENAI_API_KEY, EXA_API_KEY, ZEROCLICK_API_KEY, NVM_API_KEY, NVM_BUYER_API_KEY
+    from src.config import OPENAI_API_KEY, EXA_API_KEY, ZEROCLICK_API_KEY, NVM_API_KEY, NVM_BUYER_API_KEY, MINDRA_API_KEY
     import os as _os
     APIFY_API_KEY = _os.environ.get("APIFY_API_KEY", "")
     return {
@@ -183,6 +183,7 @@ async def keys_status():
         "zeroclick": bool(ZEROCLICK_API_KEY),
         "nvm": bool(NVM_API_KEY or NVM_BUYER_API_KEY),
         "apify": bool(APIFY_API_KEY),
+        "mindra": bool(MINDRA_API_KEY),
     }
 
 

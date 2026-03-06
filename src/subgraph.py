@@ -8,7 +8,6 @@ Async helpers for querying on-chain protocol activity:
 """
 
 import logging
-from typing import Optional
 
 import httpx
 

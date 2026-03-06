@@ -38,6 +38,8 @@ MODEL_ID = os.environ.get("MODEL_ID", "gpt-4o-mini")
 EXA_API_KEY = os.environ.get("EXA_API_KEY", "")
 ZEROCLICK_API_KEY = os.environ.get("ZEROCLICK_API_KEY", "")
 APIFY_API_KEY = os.environ.get("APIFY_API_KEY", "")
+MINDRA_API_KEY = os.environ.get("MINDRA_API_KEY", "")
+MINDRA_WORKFLOW_SLUG = os.environ.get("MINDRA_WORKFLOW_SLUG", "agent-audit")
 
 MARKETPLACE_CSV_URL = os.environ.get("MARKETPLACE_CSV_URL", "")
 

@@ -1,18 +1,18 @@
-"""AgentAudit Seller — FastAPI app with Nevermined payment-gated endpoints.
+"""AgentAudit Seller — FastAPI app with Nevermined payment-gated endpoint.
 
-Endpoints:
-  POST /audit    (2 credits)  — Full quality audit
-  POST /compare  (3 credits)  — Side-by-side comparison
-  POST /monitor  (1 credit)   — Quick health check
-  GET  /pricing               — Service pricing (free)
-  GET  /stats                 — Usage analytics (free)
-  GET  /health                — Health check (free)
+Primary endpoint:
+  POST /data  (1 credit)  — Autonomous Business Intelligence
+    Mode A: {"query": "build a fintech AI assistant"} → full pipeline
+            (marketplace search + Apify + audit + buy + strategy)
+    Mode B: {"endpoint_url": "https://..."} → direct quality audit
+
+Free endpoints:
+  GET  /pricing, /stats, /health, /services, /sample, /chain, /credits
 """
 
 import base64
 import json
 import logging
-from datetime import datetime, timezone
 from typing import Optional
 
 import uvicorn
@@ -25,14 +25,14 @@ from src.config import (
     OPENAI_API_KEY, MODEL_ID, EXA_API_KEY, ZEROCLICK_API_KEY,
     DEMO_MODE, AUDIT_SERVICE_URL, get_payments,
 )
-from src.auditor import run_audit, run_compare, run_monitor
+from src.auditor import run_audit
 from src import analytics as _analytics_mod
 from src import subgraph as _subgraph
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("agentaudit.seller")
 
-app = FastAPI(title="AgentAudit", description="Quality scoring and trust layer for the agent economy")
+app = FastAPI(title="AgentAudit", description="Autonomous Business Intelligence — describe your idea, we find, audit, buy, and deliver a strategy")
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,12 +41,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Plan is configured on Nevermined with maxAmount=1 (1 credit per use)
-# All endpoints cost exactly 1 credit to match the plan configuration
 ENDPOINT_CREDITS = {
-    "/audit": 1,
-    "/compare": 1,
-    "/monitor": 1,
     "/data": 1,
 }
 
@@ -218,115 +213,41 @@ async def _zeroclick_ad(endpoint_url: str, audit_result: dict) -> dict:
     return ad
 
 # ---------------------------------------------------------------------------
-# Endpoints
+# Main endpoint
 # ---------------------------------------------------------------------------
-
-@app.post("/audit")
-async def audit_endpoint(request: Request):
-    """Full quality audit of a service endpoint. Costs 2 credits."""
-    error = await _gate(request, "/audit", ENDPOINT_CREDITS["/audit"])
-    if error:
-        return error
-
-    body = await request.json()
-    endpoint_url = body.get("endpoint_url")
-    if not endpoint_url:
-        return JSONResponse(status_code=400, content={"error": "endpoint_url is required"})
-
-    sample_query = body.get("sample_query", "test query")
-    logger.info(f"Auditing {endpoint_url}")
-
-    result = await run_audit(
-        endpoint_url=endpoint_url,
-        sample_query=sample_query,
-        plan_id=body.get("plan_id", ""),
-        agent_id=body.get("agent_id", ""),
-        openai_api_key=OPENAI_API_KEY,
-        model_id=MODEL_ID,
-        exa_api_key=EXA_API_KEY,
-    )
-
-    if result["overall_score"] > 0.55:
-        result["ad"] = await _zeroclick_ad(endpoint_url, result)
-
-    caller = request.headers.get("x-caller-id", request.client.host if request.client else "unknown")
-    _record("/audit", ENDPOINT_CREDITS["/audit"], caller)
-    return result
-
-
-@app.post("/compare")
-async def compare_endpoint(request: Request):
-    """Side-by-side comparison of two service endpoints. Costs 3 credits."""
-    error = await _gate(request, "/compare", ENDPOINT_CREDITS["/compare"])
-    if error:
-        return error
-
-    body = await request.json()
-    urls = body.get("endpoint_urls", [])
-    url1 = body.get("endpoint_url_1") or (urls[0] if len(urls) > 0 else None)
-    url2 = body.get("endpoint_url_2") or (urls[1] if len(urls) > 1 else None)
-    query = body.get("query", "test query")
-
-    if not url1 or not url2:
-        return JSONResponse(status_code=400, content={"error": "Two endpoint URLs required"})
-
-    logger.info(f"Comparing {url1} vs {url2}")
-    result = await run_compare(url1, url2, query, OPENAI_API_KEY, MODEL_ID, EXA_API_KEY)
-
-    caller = request.headers.get("x-caller-id", request.client.host if request.client else "unknown")
-    _record("/compare", ENDPOINT_CREDITS["/compare"], caller)
-    return result
-
-
-@app.post("/monitor")
-async def monitor_endpoint(request: Request):
-    """Quick health check on a service endpoint. Costs 1 credit."""
-    error = await _gate(request, "/monitor", ENDPOINT_CREDITS["/monitor"])
-    if error:
-        return error
-
-    body = await request.json()
-    endpoint_url = body.get("endpoint_url")
-    if not endpoint_url:
-        return JSONResponse(status_code=400, content={"error": "endpoint_url is required"})
-
-    threshold = float(body.get("threshold", 0.7))
-    logger.info(f"Monitoring {endpoint_url}")
-    result = await run_monitor(endpoint_url, threshold)
-
-    caller = request.headers.get("x-caller-id", request.client.host if request.client else "unknown")
-    _record("/monitor", ENDPOINT_CREDITS["/monitor"], caller)
-    return result
-
 
 @app.get("/sample")
 async def sample_endpoint():
-    """Free sample response — lets quality auditors evaluate our service without credits.
-    
-    This endpoint returns a real audit example so external quality checkers can
-    verify AgentAudit actually works and produces valid structured output.
-    """
+    """Free sample — shows buyers what AgentAudit returns before they pay."""
     return {
         "service": "AgentAudit",
-        "version": "1.0.0",
-        "description": "Quality scoring and trust layer for the agent economy",
-        "sample_audit": {
-            "endpoint_url": "https://api.example.com",
-            "overall_score": 0.82,
-            "recommendation": "BUY",
-            "scores": {
-                "quality": 0.85,
-                "consistency": 0.80,
-                "latency": 0.90,
-                "price_value": 0.72,
-            },
-            "reasoning": "Fast, consistent, well-structured API with competitive pricing.",
+        "version": "2.0.0",
+        "description": (
+            "Autonomous Business Intelligence — describe your business idea and "
+            "AgentAudit searches the Nevermined marketplace + Apify, audits candidates, "
+            "purchases the best services, and delivers an actionable strategy."
+        ),
+        "how_to_use": {
+            "endpoint": "POST /data",
+            "credits": 1,
+            "examples": [
+                {"query": "I want to build a fintech AI assistant"},
+                {"goal": "help me find the best AI tools for social media marketing"},
+                {"query": "start a SaaS business for automated customer support"},
+                {"endpoint_url": "https://some-service.com", "query": "test this service"},
+            ],
         },
-        "endpoints": {
-            "audit":   {"path": "/audit",   "credits": 1, "method": "POST"},
-            "compare": {"path": "/compare", "credits": 1, "method": "POST"},
-            "monitor": {"path": "/monitor", "credits": 1, "method": "POST"},
-            "data":    {"path": "/data",    "credits": 1, "method": "POST"},
+        "sample_result": {
+            "goal": "build a social media marketing agency",
+            "credits_spent": 2,
+            "marketplace_services_found": 12,
+            "apify_tools_found": 5,
+            "candidates_audited": 3,
+            "purchases": [
+                {"team": "ContentAI", "score": 0.85, "purchased": True},
+                {"team": "SocialBot", "score": 0.78, "purchased": True},
+            ],
+            "recommendation": "Purchased 2 services. ContentAI scored highest for content generation...",
         },
         "pricing": {"credits_per_call": 1, "plan_id": NVM_PLAN_ID},
     }
@@ -334,11 +255,11 @@ async def sample_endpoint():
 
 @app.post("/data")
 async def data_endpoint(request: Request):
-    """Standard hackathon buyer-compatible endpoint. Costs 2 credits.
-    
-    Accepts:
-      {"endpoint_url": "https://...", "sample_query": "..."}  → runs a full audit
-      {"query": "..."}                                         → returns service info
+    """Autonomous Business Intelligence endpoint. Costs 1 credit.
+
+    Two modes:
+      {"query": "I want to build X"} → full pipeline: marketplace + Apify + audit + buy + strategy
+      {"endpoint_url": "https://..."} → direct quality audit of that specific service
     """
     error = await _gate(request, "/data", ENDPOINT_CREDITS["/data"])
     if error:
@@ -346,15 +267,17 @@ async def data_endpoint(request: Request):
 
     body = await request.json()
     endpoint_url = body.get("endpoint_url", "")
-    sample_query = body.get("sample_query") or body.get("query", "")
-
+    query = body.get("query") or body.get("goal") or body.get("sample_query") or body.get("message", "")
     caller = request.headers.get("x-caller-id", request.client.host if request.client else "unknown")
 
+    # --- Mode A: Direct audit (backward compatible — when endpoint_url is provided) ---
     if endpoint_url.startswith("http"):
-        logger.info(f"[/data] Running audit on {endpoint_url}")
+        logger.info(f"[/data] Direct audit on {endpoint_url}")
         result = await run_audit(
             endpoint_url=endpoint_url,
-            sample_query=sample_query or "test",
+            sample_query=query or "test",
+            plan_id=body.get("plan_id", ""),
+            agent_id=body.get("agent_id", ""),
             openai_api_key=OPENAI_API_KEY,
             model_id=MODEL_ID,
             exa_api_key=EXA_API_KEY,
@@ -364,36 +287,33 @@ async def data_endpoint(request: Request):
         _record("/data", ENDPOINT_CREDITS["/data"], caller)
         return result
 
-    # Business goal query — run a quick audit on the best matching service
-    goal = sample_query or "find the best AI service"
-    logger.info(f"[/data] Business intelligence query: '{goal}' from {caller}")
+    # --- Mode B: Full Business Intelligence pipeline ---
+    if not query:
+        return JSONResponse(status_code=400, content={
+            "error": "Describe your business idea or provide an endpoint_url to audit",
+            "usage": {
+                "business_idea": {"query": "I want to build a fintech AI assistant"},
+                "direct_audit": {"endpoint_url": "https://some-service.com"},
+            },
+        })
 
-    # Light response: run an audit on our own service as a demonstration
-    result = await run_audit(
-        endpoint_url=AUDIT_SERVICE_URL,
-        sample_query=goal,
-        openai_api_key=OPENAI_API_KEY,
-        model_id=MODEL_ID,
-        exa_api_key=EXA_API_KEY,
-    )
+    budget = min(int(body.get("budget_credits", 5)), 10)
+    logger.info(f"[/data] Business strategy: '{query}' budget={budget} from {caller}")
+
+    try:
+        from src.chat import _exec_business_strategy
+        result_json = await _exec_business_strategy(query, budget)
+        result = json.loads(result_json)
+    except Exception as e:
+        logger.error(f"[/data] Business strategy pipeline failed: {e}")
+        return JSONResponse(status_code=500, content={
+            "error": "Business strategy pipeline encountered an error",
+            "detail": str(e)[:200],
+            "query": query,
+        })
+
     _record("/data", ENDPOINT_CREDITS["/data"], caller)
-    return {
-        "service": "AgentAudit",
-        "description": "Autonomous Business Intelligence — audits AI marketplace services and recommends the best picks for your goal.",
-        "query": goal,
-        "audit_result": result,
-        "message": (
-            "AgentAudit evaluated the marketplace for your query. "
-            "For a full business strategy (search + audit + purchase), call /data with endpoint_url set. "
-            "Powered by OpenAI quality scoring + Exa research + Nevermined payments."
-        ),
-        "endpoints": {
-            "audit":   {"path": "/audit",   "credits": 1, "description": "Full quality audit of any endpoint"},
-            "compare": {"path": "/compare", "credits": 1, "description": "Side-by-side comparison"},
-            "monitor": {"path": "/monitor", "credits": 1, "description": "Health & availability check"},
-            "data":    {"path": "/data",    "credits": 1, "description": "Business intelligence query"},
-        },
-    }
+    return result
 
 
 @app.get("/pricing")
@@ -401,29 +321,28 @@ async def pricing():
     """Service pricing information (free)."""
     return {
         "service": "AgentAudit",
-        "description": "Quality scoring and trust layer for the agent economy",
+        "description": (
+            "Autonomous Business Intelligence — describe your idea, "
+            "we search the marketplace, audit services, buy the best ones, "
+            "and deliver an actionable strategy."
+        ),
         "planId": NVM_PLAN_ID,
         "agentId": NVM_AGENT_ID,
-        "tiers": [
-            {
-                "endpoint": "/audit",
-                "credits": 2,
-                "description": "Full quality audit: latency, quality, consistency, pricing analysis",
-                "method": "POST",
-            },
-            {
-                "endpoint": "/compare",
-                "credits": 3,
-                "description": "Side-by-side comparison of two services with winner recommendation",
-                "method": "POST",
-            },
-            {
-                "endpoint": "/monitor",
-                "credits": 1,
-                "description": "Quick health check with alerting threshold",
-                "method": "POST",
-            },
-        ],
+        "endpoint": {
+            "path": "/data",
+            "method": "POST",
+            "credits": 1,
+            "description": (
+                "Send a business idea and get back: marketplace search results, "
+                "Apify tool matches, quality audits, purchased services, "
+                "competitive analysis, and a synthesized business strategy."
+            ),
+            "input_examples": [
+                {"query": "I want to build a fintech AI assistant"},
+                {"goal": "find the best AI tools for social media marketing"},
+                {"endpoint_url": "https://some-service.com"},
+            ],
+        },
     }
 
 
@@ -457,16 +376,28 @@ async def services():
     """Machine-readable service discovery (free)."""
     return {
         "team_name": "AgentAudit",
-        "description": "Quality scoring and trust layer for the agent economy. Audit any AI service endpoint for latency, quality, consistency, and pricing.",
-        "category": "audit, quality, trust, evaluation, research, comparison, monitoring",
+        "description": (
+            "Autonomous Business Intelligence agent. Describe your business idea "
+            "and AgentAudit searches the Nevermined marketplace + Apify, audits "
+            "candidates, purchases the best services via x402, and delivers a "
+            "synthesized business strategy with ROI analysis."
+        ),
+        "category": "business intelligence, marketplace, audit, strategy, purchasing, automation",
         "plan_id": NVM_PLAN_ID,
         "agent_id": NVM_AGENT_ID,
         "endpoints": [
-            {"method": "POST", "path": "/audit", "credits": 2, "description": "Full quality audit of a service endpoint"},
-            {"method": "POST", "path": "/compare", "credits": 3, "description": "Side-by-side comparison of two services"},
-            {"method": "POST", "path": "/monitor", "credits": 1, "description": "Quick health check with alerting"},
+            {
+                "method": "POST",
+                "path": "/data",
+                "credits": 1,
+                "description": (
+                    "Send a business idea → get marketplace search, Apify tools, "
+                    "quality audits, purchases, and actionable strategy. "
+                    "Or send an endpoint_url for a direct quality audit."
+                ),
+            },
         ],
-        "free_endpoints": ["/pricing", "/stats", "/health", "/services"],
+        "free_endpoints": ["/pricing", "/stats", "/health", "/services", "/sample", "/chain", "/credits"],
     }
 
 
@@ -497,7 +428,7 @@ def main():
     if DEMO_MODE:
         logger.info("*** DEMO MODE — payment verification disabled ***")
     logger.info(f"Starting AgentAudit seller on port {SELLER_PORT}")
-    logger.info("Endpoints: /audit (2cr), /compare (3cr), /monitor (1cr)")
+    logger.info("Endpoint: POST /data (1 credit) — business idea → full strategy pipeline")
     uvicorn.run(app, host="0.0.0.0", port=SELLER_PORT)
 
 

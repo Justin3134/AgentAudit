@@ -13,10 +13,7 @@ payments-py = {version = ">=1.3.3", extras = ["langchain"]}
 openai = ">=1.0"
 python-dotenv = ">=1.0"
 langgraph = ">=0.2"
-langchain-openai = ">=0.3"
-langchain-core = ">=0.3"
 sse-starlette = ">=2.0"
-exa-py = ">=1.0"
 
 [tool.poetry.scripts]
 seller = "src.seller:main"

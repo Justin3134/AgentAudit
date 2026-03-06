@@ -139,7 +139,7 @@ async def filter_new_node(state: BuyerState) -> dict:
 
 
 async def audit_services_node(state: BuyerState) -> dict:
-    """Call our own /audit endpoint on each unaudited service."""
+    """Call our own /data endpoint on each unaudited service."""
     results = []
 
     for service in state.get("unaudited", [])[:5]:
@@ -169,7 +169,7 @@ async def audit_services_node(state: BuyerState) -> dict:
 
             async with httpx.AsyncClient(timeout=60.0) as client:
                 resp = await client.post(
-                    f"{AUDIT_SERVICE_URL.rstrip('/')}/audit",
+                    f"{AUDIT_SERVICE_URL.rstrip('/')}/data",
                     json={
                         "endpoint_url": url,
                         "sample_query": service.get("description", "test query")[:100],

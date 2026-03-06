@@ -34,6 +34,7 @@ _store = {
         "nevermined": {"calls": 0, "status": "active", "last_used": None},
         "zeroclick":  {"calls": 0, "status": "active", "last_used": None},
         "apify":      {"calls": 0, "status": "active", "last_used": None},
+        "mindra":     {"calls": 0, "status": "active", "last_used": None},
     },
 }
 

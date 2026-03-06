@@ -126,15 +126,13 @@ OWN_SERVICES = [
     {
         "team_name": "AgentAudit",
         "endpoint_url": AUDIT_SERVICE_URL,
-        "description": "Quality scoring and trust layer — full audit of any AI service endpoint (latency, quality, consistency, pricing). Also offers side-by-side comparison and health monitoring.",
+        "description": "Autonomous Business Intelligence — describe a business idea and get marketplace search, Apify tools, quality audits, purchases, and actionable strategy.",
         "plan_id": NVM_PLAN_ID,
         "agent_id": NVM_AGENT_ID,
-        "price_credits": "2 (audit), 3 (compare), 1 (monitor)",
-        "category": "audit, quality, trust, evaluation, research, comparison, monitoring",
+        "price_credits": "1 credit per call",
+        "category": "business intelligence, marketplace, audit, strategy, purchasing, automation",
         "endpoints": {
-            "audit": f"{AUDIT_SERVICE_URL}/audit",
-            "compare": f"{AUDIT_SERVICE_URL}/compare",
-            "monitor": f"{AUDIT_SERVICE_URL}/monitor",
+            "data": f"{AUDIT_SERVICE_URL}/data",
         },
     },
 ]
@@ -761,7 +759,7 @@ async def _call_own_audit(endpoint_url: str, sample_query: str) -> str:
 
     async with httpx.AsyncClient(timeout=90.0) as client:
         resp = await client.post(
-            f"{AUDIT_SERVICE_URL.rstrip('/')}/audit",
+            f"{AUDIT_SERVICE_URL.rstrip('/')}/data",
             json={"endpoint_url": endpoint_url, "sample_query": sample_query},
             headers=headers,
         )
@@ -774,7 +772,7 @@ async def _call_own_audit(endpoint_url: str, sample_query: str) -> str:
             data["_payment_method"] = "nevermined_x402"
             _analytics_mod.record_purchase(
                 vendor="AgentAudit (self)",
-                endpoint=f"{AUDIT_SERVICE_URL}/audit",
+                endpoint=f"{AUDIT_SERVICE_URL}/data",
                 credits=1,
                 score=data.get("overall_score", 0),
                 recommendation=data.get("recommendation", ""),
@@ -798,13 +796,13 @@ async def _call_own_audit(endpoint_url: str, sample_query: str) -> str:
     # Record locally so sidebar shows the activity
     _analytics_mod.record_purchase(
         vendor="AgentAudit (self)",
-        endpoint=f"{AUDIT_SERVICE_URL}/audit",
+        endpoint=f"{AUDIT_SERVICE_URL}/data",
         credits=1,
         score=result.get("overall_score", 0),
         recommendation=result.get("recommendation", ""),
         payment_method="direct_fallback",
     )
-    _analytics_mod.record_sale("/audit", 2, "AgentAudit-Chat", "direct_fallback")
+    _analytics_mod.record_sale("/data", 1, "AgentAudit-Chat", "direct_fallback")
     return json.dumps(result)
 
 
