@@ -31,6 +31,7 @@ from src.config import (
 from src.apify_tools import search_apify_store, run_best_apify_actor
 from src.marketplace import fetch_marketplace
 from src import analytics as _analytics_mod
+from src import mindra as _mindra
 
 logger = logging.getLogger("agentaudit.chat")
 
@@ -151,19 +152,51 @@ You are AgentAudit — an Autonomous Business Intelligence Agent that searches t
 | "audit this URL" | **audit_service** |
 | "compare X and Y" | **compare_services** |
 | "buy from X" | **buy_service** |
+| "orchestrate" / "Mindra" / "workflow" / "self-healing" | **mindra_orchestrate** |
+
+## Budget — ALWAYS ask first
+
+When the user describes a business goal and has NOT mentioned a budget or credit amount in their message,
+respond with ONE short message asking for budget BEFORE calling any tool:
+
+> "Got it — **[goal]**. Before I start purchasing agents, what's your budget?
+> e.g. **3 credits** (quick test) · **5 credits** (solid foundation) · **10 credits** (full coverage)
+> *(1 credit ≈ $0.05–$1 depending on the plan)*"
+
+Once the user replies with a number (e.g. "5", "5 credits", "10 credits"), extract that number and call
+`execute_business_strategy` with `budget_credits` set to that number.
+
+If the user's message already contains a budget (e.g. "build X with 5 credits", "budget 10"), skip asking and
+call `execute_business_strategy` directly with the specified `budget_credits`.
 
 ## How to present strategy results
 
-After execute_business_strategy, report like a business briefing:
-1. **Marketplace search** — which teams were found, and why they fit the goal
-2. **Audit scores** — how each team scored (quality, latency, price)
-3. **Purchases made** — for each `purchased: true` result: team name, tx_hash (first 16 chars), audit score, NEW or REPEAT
-4. **ROI rationale** — why certain teams were bought (high score), why others were skipped (AVOID/low score)
-5. **Apify actors** — mention any complementary tools found
-6. Total spend and teams bought from
+After execute_business_strategy completes, lead with a compact **receipt block**, then the briefing:
 
-Key: `purchased: true` = a REAL Nevermined blockchain transaction (order_plan). This is what counts for the hackathon.
-`repeat_purchase: true` = bought from a team we already had a plan with (demonstrates ROI-based re-buy decision).
+### Receipt (always show this first)
+```
+PURCHASES — [N] agent(s) · [total_credits] credits spent
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✓ [Team Name]          [NEW / REPEAT]
+  Score: [0.XX] · Paid: [price] · [credits] credits
+  tx: [first 20 chars of tx_hash]…
+
+✓ [Team Name 2]        [NEW / REPEAT]
+  Score: [0.XX] · Paid: [price] · [credits] credits
+  tx: [first 20 chars of tx_hash]…
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Budget used: [spent]/[budget] credits
+```
+
+If price_per_credit is 0 or unknown, write "Paid: free plan" or "Paid: 1 USDC/request".
+
+Then continue with:
+1. **Why I bought these** — 1 sentence per agent, citing their score vs. alternatives
+2. **What I skipped** — briefly note any AVOID decisions and why (score, latency, etc.)
+3. **Agent output** — paste real execution results from `execution_results` or `execution_synthesis`
+
+Key: `purchased: true` = a REAL Nevermined blockchain transaction (order_plan).
+`repeat_purchase: true` = re-invested in a top performer (ROI-based repeat buy).
 
 ## Error reporting — BE ACCURATE
 - If error contains "sandbox" or "500" → "Nevermined sandbox temporarily unavailable, retry later"  
@@ -185,6 +218,12 @@ Key: `purchased: true` = a REAL Nevermined blockchain transaction (order_plan). 
 ## Exa competitive analysis
 - When Exa API key is present, used to research the business domain before buying
 - Provides web-sourced competitive context to inform BUY/AVOID decisions
+
+## Mindra orchestration (when available)
+- Mindra is an agentic workflow orchestrator with self-healing, anomaly detection, and human-in-the-loop approvals
+- When the user asks to "orchestrate", "run a workflow", or "use Mindra", use **mindra_orchestrate**
+- The parallel_agents tool also routes through Mindra when available, adding self-healing and anomaly detection
+- Mindra workflows stream real-time events (tool executions, approvals, results) visible in the dashboard
 
 ## AbilityAI Trinity integration
 - "Full Stack Agents" = Trinity Nexus agent (us14.abilityai.dev) — multi-agent orchestration
@@ -220,9 +259,13 @@ If `execution_results` is empty or agents returned errors, the report will have 
   **Ruby — Content Strategy**
   > Recommended content pillars for your agency: [3 specific pillars based on the goal].
 
-### Phase 3 — Next action (always end with a concrete next step)
+### Phase 3 — Next action + related suggestions (always end with both)
 Always end with: "What should I focus on next?" AND one specific suggestion:
 e.g. "I can: (a) run a deeper competitor analysis, (b) draft your agency's pricing strategy, or (c) find more specialized agents for [specific capability]."
+
+Then add a "You might also like" line — mention 1-2 related tools or agents from Apify/marketplace that complement what was purchased. Make it feel like a natural recommendation, e.g.:
+"**Related**: I found [Apify actor name] which could automate [specific task for goal]. Want me to run it?"
+This is zero-click discovery — proactively surface useful tools without the user having to search.
 
 ## Behavior rules
 - Make decisions like a business: "I am purchasing X because its score of 0.82 beats Y at 0.61"
@@ -408,7 +451,7 @@ TOOLS = [
                 "properties": {
                     "query": {"type": "string", "description": "What kind of tool or agent to find (e.g. 'social media scraper', 'news aggregator', 'sentiment analysis')"},
                     "run_actor": {"type": "boolean", "description": "If true, also run the best matching actor with the query and return real results (default false)"},
-                    "category": {"type": "string", "description": "Apify category filter — e.g. 'AI', 'Social Media', 'News' (default: AI)"},
+                    "category": {"type": "string", "description": "Apify category filter — e.g. 'AI', 'Social Media', 'Marketing', 'News' (auto-detected from query if omitted)"},
                 },
                 "required": ["query"],
             },
@@ -438,6 +481,34 @@ TOOLS = [
                     },
                 },
                 "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "mindra_orchestrate",
+            "description": (
+                "Run a task through Mindra's agentic workflow orchestrator. Mindra provides "
+                "self-healing workflows (auto-recovery from agent failures), anomaly detection "
+                "(catches hallucinations), and human-in-the-loop approvals for high-risk actions. "
+                "Use this for complex multi-step tasks, when the user mentions 'Mindra', 'orchestrate', "
+                "'workflow', or when you want robust error recovery on agent calls. "
+                "Streams real-time events (tool executions, results, approvals) back to the dashboard."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task": {
+                        "type": "string",
+                        "description": "The task to orchestrate (e.g. 'Research AI market trends and compile a report')",
+                    },
+                    "workflow_slug": {
+                        "type": "string",
+                        "description": "Optional Mindra workflow slug (default: agent-audit)",
+                    },
+                },
+                "required": ["task"],
             },
         },
     },
@@ -515,6 +586,9 @@ async def _exec_tool(name: str, args: dict) -> str:
 
         elif name == "parallel_agents":
             return await _exec_parallel_agents(args.get("query", ""), min(int(args.get("agent_count", 3)), 5))
+
+        elif name == "mindra_orchestrate":
+            return await _exec_mindra_orchestrate(args.get("task", ""), args.get("workflow_slug", ""))
 
         elif name == "analyze_url":
             _analytics_mod.record_tool_call("exa", "ok")
@@ -1006,7 +1080,7 @@ async def _call_external_service(endpoint_url: str, query: str, plan_id: str, ag
             })
 
 
-async def _exec_search_apify(query: str, run_actor: bool = False, category: str = "AI") -> str:
+async def _exec_search_apify(query: str, run_actor: bool = False, category: str = "") -> str:
     """Search the Apify Store marketplace and optionally run the best actor."""
     results = await search_apify_store(query, APIFY_API_KEY, category=category, max_results=8)
     _analytics_mod.record_tool_call("apify", "ok" if results else "error")
@@ -1025,15 +1099,62 @@ async def _exec_search_apify(query: str, run_actor: bool = False, category: str 
     }, indent=2)
 
 
+async def _exec_mindra_orchestrate(task: str, workflow_slug: str = "") -> str:
+    """Run a task through Mindra's workflow orchestrator with self-healing and anomaly detection."""
+    if not _mindra.is_available():
+        return json.dumps({
+            "error": "Mindra API key not configured. Set MINDRA_API_KEY in .env",
+            "orchestrator": "mindra",
+            "status": "unavailable",
+        })
+
+    _analytics_mod.record_tool_call("mindra", "ok")
+
+    result = await _mindra.run_and_collect(
+        task=task,
+        metadata={
+            "source": "agentaudit",
+            "integration": "nevermined_x402",
+        },
+        workflow_slug=workflow_slug,
+        auto_approve=True,
+        timeout_seconds=120.0,
+    )
+
+    n_tools = len(result.get("tool_results", []))
+    n_approvals = result.get("approvals_handled", 0)
+
+    if result.get("status") == "error":
+        _analytics_mod.record_tool_call("mindra", "error")
+    else:
+        _analytics_mod.record_tool_call("mindra", "ok")
+
+    report = {
+        "orchestrator": "mindra",
+        "execution_id": result.get("execution_id", ""),
+        "workflow_name": result.get("workflow_name", ""),
+        "status": result.get("status", "unknown"),
+        "final_answer": result.get("final_answer", ""),
+        "tool_executions": result.get("tool_executions", []),
+        "tool_results": result.get("tool_results", []),
+        "approvals_handled": n_approvals,
+        "self_healing": result.get("status") == "completed",
+        "anomaly_detection": True,
+        "error": result.get("error", ""),
+        "summary": (
+            f"Mindra workflow {'completed' if result.get('status') == 'completed' else result.get('status', 'unknown')}. "
+            f"{n_tools} tool executions, {n_approvals} approvals auto-handled."
+        ),
+    }
+    return json.dumps(report, indent=2)
+
+
 async def _exec_parallel_agents(query: str, agent_count: int = 3) -> str:
-    """
-    Mindra-style hierarchical multi-agent orchestration.
-    Calls agent_count marketplace services IN PARALLEL with the same query,
-    then synthesizes all responses using OpenAI.
-    Each call uses Nevermined x402 payment, demonstrating:
-      - Multi-agent coordination
-      - Parallel Nevermined payments
-      - Hierarchical synthesis (orchestrator of agents)
+    """Hierarchical multi-agent orchestration via Mindra (when available) or direct asyncio.
+
+    When Mindra is configured, the parallel orchestration is routed through Mindra's
+    workflow engine for self-healing, anomaly detection, and real-time streaming.
+    Falls back to direct asyncio.gather when Mindra is unavailable.
     """
     report: dict = {
         "orchestration": "parallel",
@@ -1044,7 +1165,44 @@ async def _exec_parallel_agents(query: str, agent_count: int = 3) -> str:
         "credits_spent": 0,
     }
 
-    # Get live marketplace entries
+    # --- Mindra path: delegate orchestration for self-healing + anomaly detection ---
+    if _mindra.is_available():
+        logger.info("[parallel_agents] Routing through Mindra orchestrator")
+        _analytics_mod.record_tool_call("mindra", "ok")
+        mindra_task = (
+            f"Run {agent_count} AI marketplace agents in parallel with this query: {query}\n"
+            "Collect all responses and synthesize them into one cohesive answer."
+        )
+        mindra_result = await _mindra.run_and_collect(
+            task=mindra_task,
+            metadata={
+                "source": "agentaudit_parallel",
+                "agent_count": agent_count,
+                "query": query,
+            },
+            auto_approve=True,
+            timeout_seconds=90.0,
+        )
+        report["orchestrator"] = "mindra"
+        report["mindra_execution_id"] = mindra_result.get("execution_id", "")
+        report["mindra_status"] = mindra_result.get("status", "unknown")
+        report["mindra_tool_results"] = mindra_result.get("tool_results", [])
+        report["self_healing"] = mindra_result.get("status") == "completed"
+        report["anomaly_detection"] = True
+
+        if mindra_result.get("final_answer"):
+            report["synthesis"] = mindra_result["final_answer"]
+            report["summary"] = (
+                f"Mindra orchestrated {agent_count} agents in parallel. "
+                f"Status: {mindra_result.get('status', 'unknown')}. "
+                f"{len(mindra_result.get('tool_results', []))} tool executions."
+            )
+            return json.dumps(report, indent=2)
+
+        logger.info("[parallel_agents] Mindra didn't return a final answer, falling back to direct calls")
+
+    # --- Direct path: asyncio.gather with Nevermined x402 ---
+    report["orchestrator"] = "direct" if not _mindra.is_available() else "mindra+direct"
     marketplace_entries = await fetch_marketplace(nvm_api_key=NVM_API_KEY)
 
     def _is_viable(entry: dict) -> bool:
@@ -1056,7 +1214,6 @@ async def _exec_parallel_agents(query: str, agent_count: int = 3) -> str:
                 and "nevermined.app/checkout" not in ep)
 
     viable = [e for e in marketplace_entries if _is_viable(e)]
-    # Deduplicate by host
     seen: set[str] = set()
     agents_to_call = []
     for e in viable:
@@ -1075,7 +1232,6 @@ async def _exec_parallel_agents(query: str, agent_count: int = 3) -> str:
         for a in agents_to_call
     ]
 
-    # Call all agents in parallel
     async def call_one(entry: dict) -> dict:
         ep = entry.get("endpoint_url", "")
         team = entry.get("team_name", "unknown")
@@ -1104,7 +1260,6 @@ async def _exec_parallel_agents(query: str, agent_count: int = 3) -> str:
     for r in successful:
         _analytics_mod.record_tool_call("nevermined", "ok")
 
-    # Synthesize all responses with OpenAI
     if OPENAI_API_KEY and successful:
         try:
             client = OpenAI(api_key=OPENAI_API_KEY)
@@ -1434,18 +1589,16 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                 pass
 
         # ROI Decision logic (this is where the agent "thinks"):
-        # - HOLD: already subscribed AND balance > 30 AND not the top pick
-        # - REPEAT_BUY: already subscribed but top pick (score > 0.7) → buy again to show repeat behavior
+        # - HOLD: already subscribed AND balance > 100 AND not the top pick
+        # - REPEAT_BUY: already subscribed but top pick (score > 0.7) → buy again
         # - BUY: not subscribed, score >= 0.5
         # - WATCH: not subscribed, score 0.4-0.5
         # - AVOID: score < 0.4
-        if already_subscribed and existing_balance > 30 and score < 0.75:
+        if already_subscribed and existing_balance > 100 and score < 0.75:
             roi_decision = "HOLD"
             pick["roi_decision"] = roi_decision
             pick["roi_reason"] = f"Already subscribed ({existing_balance} credits) — holding position"
-            # Don't skip HOLD — add to queue anyway to hit 3+ transaction count
-            # by re-buying (fresh credits via order_plan)
-        elif score >= 0.6:
+        elif score >= 0.5:
             roi_decision = "REPEAT_BUY" if already_subscribed else "BUY"
             pick["roi_decision"] = roi_decision
             pick["roi_reason"] = (f"Re-buying top performer ({score:.2f}) for additional credits"
@@ -1518,16 +1671,28 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                     credits=1, score=score, recommendation=pick.get("roi_decision", "BUY"),
                     payment_method="nevermined_order_plan",
                 )
+                # Build human-readable price label for the receipt
+                _raw_price = pick.get("price", "") or pick.get("plan_price", "")
+                _credits_in_plan = pick.get("credits_in_plan", None) or getattr(bal, "credits", None)
+                if price_per_credit and price_per_credit > 0:
+                    _price_label = f"{price_per_credit} cr/req"
+                elif _raw_price:
+                    _price_label = _raw_price
+                else:
+                    _price_label = "free plan"
                 return {
                     "team": team,
                     "purchased": True,
                     "tx_hash": tx_hash,
                     "plan_id": plan_id,
                     "agent_id": pick.get("agent_id", ""),
-                    "endpoint": pick.get("endpoint", ""),  # carry endpoint forward for execution step
+                    "endpoint": pick.get("endpoint", ""),
                     "price_per_credit": price_per_credit,
+                    "plan_price": _price_label,
+                    "credits_purchased": _credits_in_plan,
                     "audit_score": score,
                     "roi_decision": pick.get("roi_decision", "BUY"),
+                    "roi_reason": pick.get("roi_reason", ""),
                     "repeat_purchase": is_repeat,
                     "already_had_plan": already_subscribed,
                     "new_balance": current_balance,
@@ -1639,7 +1804,7 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                     f"Include: (1) 3 concrete market insights, (2) top 3 immediate actions to take today, "
                     f"(3) one key metric to track. Be direct and specific — no generic advice."
                 )
-                async with httpx.AsyncClient(timeout=25.0) as client:
+                async with httpx.AsyncClient(timeout=45.0) as client:
                     resp = await client.post(
                         ep,
                         json={"message": biz_query, "query": biz_query, "prompt": biz_query},
@@ -1838,25 +2003,42 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
 
     # Add execution_results alias for LLM clarity
     report["execution_results"] = business_outputs
+
+    # Build contextual zero-click suggestions based on goal + what was found
+    suggested_actions = [
+        f"Run {goal}-specific competitive analysis using Exa",
+        f"Ask agents to generate {goal} pricing strategy",
+        f"Search Apify for {goal} automation tools",
+    ]
+    if apify_actors:
+        top_apify = apify_actors[0].get("team_name", "").replace("Apify: ", "")
+        suggested_actions.insert(0, f"Try {top_apify} actor for real {goal} data")
+    if report.get("exa_research", {}).get("competitors"):
+        comps = [c["domain"] for c in report["exa_research"]["competitors"][:2]]
+        suggested_actions.append(f"Audit competitors: {', '.join(comps)}")
+
     report["business_brief"] = {
         "goal": goal,
         "teams_purchased": [p["team"] for p in successful],
         "total_credits_spent": credits_spent,
-        "next_suggested_actions": [
-            f"Run {goal}-specific competitive analysis using Exa",
-            f"Ask agents to generate {goal} pricing strategy",
-            f"Search Apify for {goal} automation tools",
-        ],
+        "next_suggested_actions": suggested_actions,
     }
 
     return json.dumps(report, indent=2)
 
 
-async def chat_stream(message: str, history: list[dict]) -> AsyncGenerator[dict, None]:
+async def chat_stream(message: str, history: list[dict], budget_credits: int = 5) -> AsyncGenerator[dict, None]:
     """Run the chat agent and yield SSE events."""
     client = OpenAI(api_key=OPENAI_API_KEY)
 
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    # Inject session budget so LLM uses it and can skip asking if already set
+    budget_note = (
+        f"\n\n## Session budget\nThe user has set a budget of **{budget_credits} credits** "
+        f"for this session via the budget bar. "
+        f"Use this as the `budget_credits` value when calling `execute_business_strategy`. "
+        f"Do NOT ask for budget again — it is already set to {budget_credits}."
+    )
+    messages = [{"role": "system", "content": SYSTEM_PROMPT + budget_note}]
     messages.extend(history)
     messages.append({"role": "user", "content": message})
 
@@ -1882,17 +2064,22 @@ async def chat_stream(message: str, history: list[dict]) -> AsyncGenerator[dict,
                 yield {"event": "tool_use", "data": {"tool": fn_name, "args": fn_args}}
 
                 # For orchestration tools — emit structured agent-init + activation events
-                if fn_name in ("execute_business_strategy", "parallel_agents"):
-                    # Step 1: initialise all agent boxes
-                    yield {"event": "tool_step", "data": {"agent_init": [
+                if fn_name in ("execute_business_strategy", "parallel_agents", "mindra_orchestrate"):
+                    mindra_active = _mindra.is_available()
+                    agents_init = [
                         {"id": "exa",       "name": "Exa Research",         "status": "queued"},
                         {"id": "apify",     "name": "Apify Store",          "status": "queued"},
                         {"id": "openai",    "name": "OpenAI Audit",         "status": "queued"},
                         {"id": "nevermined","name": "Nevermined x402",      "status": "queued"},
                         {"id": "trinity",   "name": "AbilityAI Trinity",    "status": "queued"},
-                    ]}}
+                    ]
+                    if mindra_active:
+                        agents_init.insert(0, {"id": "mindra", "name": "Mindra Orchestrator", "status": "queued"})
+                    yield {"event": "tool_step", "data": {"agent_init": agents_init}}
                     await asyncio.sleep(0.05)
-                    # Step 2: Exa + Apify activate in parallel first
+                    if mindra_active:
+                        yield {"event": "tool_step", "data": {"agent": "mindra", "status": "running", "msg": "Orchestrating workflow..."}}
+                        await asyncio.sleep(0.05)
                     yield {"event": "tool_step", "data": {"agent": "exa",   "status": "running", "msg": "Researching domain..."}}
                     await asyncio.sleep(0.05)
                     yield {"event": "tool_step", "data": {"agent": "apify", "status": "running", "msg": "Searching Apify Store..."}}
@@ -1900,16 +2087,29 @@ async def chat_stream(message: str, history: list[dict]) -> AsyncGenerator[dict,
                     yield {"event": "tool_step", "data": {"agent": "trinity", "status": "running", "msg": "Connecting Trinity..."}}
                     await asyncio.sleep(0)
 
+                # Inject session budget into execute_business_strategy if not already set
+                if fn_name == "execute_business_strategy" and "budget_credits" not in fn_args:
+                    fn_args["budget_credits"] = budget_credits
+
                 result = await _exec_tool(fn_name, fn_args)
 
                 # After orchestration: emit final agent states based on actual result
-                if fn_name in ("execute_business_strategy", "parallel_agents"):
+                if fn_name in ("execute_business_strategy", "parallel_agents", "mindra_orchestrate"):
                     try:
                         r = json.loads(result)
                         n_apify   = len(r.get("apify_actors", []))
                         n_audited = len([s for s in r.get("audit_scores", []) if not s.get("error")])
                         n_bought  = len([p for p in r.get("purchases", []) if p.get("purchased")])
                         n_agents  = len([a for a in r.get("agents", []) if a.get("purchased")])
+                        # Mindra orchestrator status
+                        if r.get("orchestrator") == "mindra" or fn_name == "mindra_orchestrate":
+                            mindra_ok = r.get("status") == "completed" or r.get("self_healing")
+                            n_mindra_tools = len(r.get("tool_results", []))
+                            yield {"event": "tool_step", "data": {
+                                "agent": "mindra",
+                                "status": "done" if mindra_ok else "failed",
+                                "msg": f"{'Self-healed' if mindra_ok else 'Error'} — {n_mindra_tools} tools executed",
+                            }}
                         yield {"event": "tool_step", "data": {"agent": "exa",        "status": "done", "msg": "Research complete"}}
                         yield {"event": "tool_step", "data": {"agent": "apify",      "status": "done", "msg": f"{n_apify} actors found"}}
                         yield {"event": "tool_step", "data": {"agent": "openai",     "status": "done" if n_audited else "idle", "msg": f"{n_audited} audited"}}

@@ -1,8 +1,8 @@
 """AgentAudit Buyer — LangGraph state machine for autonomous marketplace purchasing.
 
 Nodes:
-  fetch_marketplace → filter_new → audit_services → score_and_decide
-                    → execute_purchases → log_decisions → END
+  fetch_marketplace → filter_new → audit_services → mindra_validate
+                    → score_and_decide → execute_purchases → log_decisions → END
 
 Run:  poetry run buyer
 API:  http://localhost:8000/api/{status,audits,decisions,budget,trigger}
@@ -12,7 +12,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Literal, TypedDict
+from typing import TypedDict
 
 import httpx
 import uvicorn
@@ -35,11 +35,11 @@ from src.config import (
     NVM_API_KEY,
     NVM_AGENT_ID,
     NVM_PLAN_ID,
-    get_payments,
     get_buyer_payments,
 )
 from src.marketplace import fetch_marketplace
 from src import analytics as _analytics_mod
+from src import mindra as _mindra
 from src.config import ZEROCLICK_API_KEY
 
 logging.basicConfig(level=logging.INFO)
@@ -141,7 +141,6 @@ async def filter_new_node(state: BuyerState) -> dict:
 async def audit_services_node(state: BuyerState) -> dict:
     """Call our own /audit endpoint on each unaudited service."""
     results = []
-    payments = get_payments()
 
     for service in state.get("unaudited", [])[:5]:
         url = service.get("endpoint_url", "")
@@ -193,6 +192,53 @@ async def audit_services_node(state: BuyerState) -> dict:
             _log(state, f"  {team}: audit error — {e}")
 
     return {"audit_results": results}
+
+
+async def mindra_validate_node(state: BuyerState) -> dict:
+    """Optional Mindra-powered anomaly detection on audit results.
+
+    Sends audit scores to Mindra for hallucination/anomaly checks.
+    If Mindra is unavailable, passes through unchanged.
+    """
+    audit_results = state.get("audit_results", [])
+    if not audit_results or not _mindra.is_available():
+        return {}
+
+    _log(state, f"[Mindra] Validating {len(audit_results)} audit results for anomalies...")
+    _analytics_mod.record_tool_call("mindra", "ok")
+
+    scores_summary = "\n".join(
+        f"- {r.get('team_name', 'unknown')}: score={r.get('overall_score', 0):.2f}, "
+        f"latency={r.get('latency_p50', 'N/A')}ms, rec={r.get('recommendation', 'N/A')}"
+        for r in audit_results
+    )
+    task = (
+        f"Validate these AI service audit results for anomalies or hallucinations:\n"
+        f"{scores_summary}\n\n"
+        "Flag any scores that seem inconsistent, suspiciously high/low, "
+        "or where the recommendation doesn't match the score."
+    )
+
+    try:
+        result = await _mindra.run_and_collect(
+            task=task,
+            metadata={"source": "agentaudit_buyer", "step": "anomaly_detection"},
+            auto_approve=True,
+            timeout_seconds=30.0,
+        )
+
+        if result.get("final_answer"):
+            _log(state, f"[Mindra] Anomaly check: {result['final_answer'][:200]}")
+            for r in audit_results:
+                r["mindra_validated"] = True
+                r["mindra_anomaly_check"] = result.get("status", "unknown")
+        else:
+            _log(state, "[Mindra] Anomaly check returned no answer (workflow may not have completed)")
+
+    except Exception as e:
+        _log(state, f"[Mindra] Validation error (non-fatal): {e}")
+
+    return {}
 
 
 async def score_and_decide_node(state: BuyerState) -> dict:
@@ -505,6 +551,7 @@ def build_buyer_graph():
     g.add_node("fetch_marketplace", fetch_marketplace_node)
     g.add_node("filter_new", filter_new_node)
     g.add_node("audit_services", audit_services_node)
+    g.add_node("mindra_validate", mindra_validate_node)
     g.add_node("score_and_decide", score_and_decide_node)
     g.add_node("execute_purchases", execute_purchases_node)
     g.add_node("log_decisions", log_decisions_node)
@@ -512,7 +559,8 @@ def build_buyer_graph():
     g.add_edge(START, "fetch_marketplace")
     g.add_edge("fetch_marketplace", "filter_new")
     g.add_edge("filter_new", "audit_services")
-    g.add_edge("audit_services", "score_and_decide")
+    g.add_edge("audit_services", "mindra_validate")
+    g.add_edge("mindra_validate", "score_and_decide")
     g.add_edge("score_and_decide", "execute_purchases")
     g.add_edge("execute_purchases", "log_decisions")
     g.add_edge("log_decisions", END)
@@ -620,6 +668,7 @@ async def api_chat(request: Request):
     body = await request.json()
     message = body.get("message", "")
     session_id = body.get("session_id", "default")
+    budget_credits = int(body.get("budget_credits", 5) or 5)
 
     if not message:
         return {"error": "message is required"}
@@ -629,7 +678,7 @@ async def api_chat(request: Request):
     async def event_generator():
         full_response = ""
         try:
-            async for event in chat_stream(message, history):
+            async for event in chat_stream(message, history, budget_credits=budget_credits):
                 yield {"event": event["event"], "data": json.dumps(event["data"])}
                 if event["event"] == "token":
                     full_response += event["data"].get("text", "")

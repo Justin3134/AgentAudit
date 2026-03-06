@@ -435,9 +435,36 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
   font-size: 11px; color: #ccc; line-height: 1.65; white-space: pre-wrap;
   border-left: 2px solid var(--border); padding-left: 10px;
 }
-.biz-agent-output.loading { color: var(--dim2); font-style: italic; }
+.biz-agent-output.loading {
+  color: var(--dim2); font-style: italic;
+  animation: shimmerLoad 2s ease-in-out infinite;
+}
+@keyframes shimmerLoad {
+  0%,100% { opacity: 1; border-left-color: var(--border); }
+  50%     { opacity: 0.5; border-left-color: var(--orange); }
+}
 .biz-agent-output strong { color: var(--fg); font-weight: 500; }
 .biz-agent-status { margin-top: 10px; font-size: 9px; display: flex; align-items: center; gap: 5px; }
+.biz-agent-card.processing { animation: cardPulse 1.8s ease-in-out infinite; }
+@keyframes cardPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(100,200,100,0); }
+  50%     { box-shadow: 0 0 12px 2px rgba(100,200,100,0.15); }
+}
+.biz-processing-label {
+  font-size: 9px; color: var(--orange); text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 5px; display: flex; align-items: center; gap: 6px;
+}
+.biz-processing-label .spinner {
+  width: 10px; height: 10px; border: 1.5px solid var(--border); border-top-color: var(--orange);
+  border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.suggest-card {
+  border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px;
+  background: linear-gradient(160deg, #060608 0%, #0a0a10 100%);
+  cursor: pointer; transition: border-color 0.2s, background 0.2s;
+}
+.suggest-card:hover { border-color: var(--dim); background: #0c0c14; }
 
 .biz-txns { margin-bottom: 20px; }
 .biz-txn-row {
@@ -517,6 +544,7 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
       <div class="svc-status" id="tool-nvm-wrap" title="Nevermined x402 — payment infrastructure"><span class="dot" id="dot-nvm"></span><span style="font-size:10px">Nevermined</span><span id="tool-nvm-count" style="font-size:9px;color:var(--dim);margin-left:3px;display:none"></span></div>
       <div class="svc-status" id="tool-zc-wrap" title="ZeroClick native ads — live"><span class="dot" id="dot-zc"></span><span style="font-size:10px">ZeroClick</span><span id="tool-zc-status" style="font-size:9px;color:var(--green);margin-left:3px">live</span></div>
       <div class="svc-status" id="tool-apify-wrap" title="Apify Store — web scrapers and AI actors marketplace"><span class="dot up" id="dot-apify"></span><span style="font-size:10px">Apify</span><span id="tool-apify-count" style="font-size:9px;color:var(--dim);margin-left:3px;display:none"></span></div>
+      <div class="svc-status" id="tool-mindra-wrap" title="Mindra — agentic workflow orchestrator with self-healing"><span class="dot up" id="dot-mindra"></span><span style="font-size:10px">Mindra</span><span id="tool-mindra-count" style="font-size:9px;color:var(--dim);margin-left:3px;display:none"></span></div>
       <div style="width:1px;height:16px;background:var(--border);margin:0 4px"></div>
       <div style="display:flex;gap:4px">
         <button id="btn-chat" onclick="showView('chat')" style="font-size:10px;font-family:inherit;background:var(--fg);border:1px solid var(--fg);color:var(--bg);padding:3px 10px;border-radius:3px;cursor:pointer;letter-spacing:0.05em">Chat</button>
@@ -561,8 +589,15 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
         &bull; what services are available in the marketplace<br>
       </div>
     </div>
+    <div id="budget-bar" style="padding:6px 24px 0;display:flex;align-items:center;gap:10px;border-top:1px solid var(--border);background:var(--bg)">
+      <span style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;white-space:nowrap">Budget</span>
+      <input id="budget-input" type="number" min="1" max="50" value="5"
+        style="width:48px;background:#0a0a0a;border:1px solid var(--border);color:var(--fg);font-family:inherit;font-size:11px;padding:3px 6px;border-radius:3px;outline:none;text-align:center" />
+      <span style="font-size:9px;color:var(--dim2)">credits max spend</span>
+      <span id="budget-spent-lbl" style="font-size:9px;color:var(--dim2);margin-left:auto"></span>
+    </div>
     <div class="chat-input-area">
-      <input id="chat-input" placeholder="Ask AgentAudit..." autocomplete="off" />
+      <input id="chat-input" placeholder="Describe a business goal..." autocomplete="off" />
       <button id="send-btn">Send</button>
     </div>
     </div><!-- end view-chat -->
@@ -572,7 +607,8 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 
     <div class="section-label">Live Orchestration <span style="font-size:9px;color:var(--dim)">· agents running now</span></div>
     <div class="orch-grid" id="orch-grid">
-        <div class="agent-box idle" id="orch-exa"       ><div class="agent-box-name">Exa Research</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-mindra"     ><div class="agent-box-name" style="color:var(--cyan,#6ecbf5)">⬡ Mindra</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-exa"        ><div class="agent-box-name">Exa Research</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
       <div class="agent-box idle" id="orch-apify"      ><div class="agent-box-name">Apify Store</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
       <div class="agent-box idle" id="orch-openai"     ><div class="agent-box-name">OpenAI Audit</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
       <div class="agent-box idle" id="orch-nevermined" ><div class="agent-box-name">Nevermined</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
@@ -603,6 +639,12 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
     </div>
     <div class="stat-row"><span class="stat-key">impressions</span><span class="stat-val" id="zc-imp">0</span></div>
     <div class="stat-row"><span class="stat-key">conversions</span><span class="stat-val" id="zc-conv">0</span></div>
+    <div class="divider"></div>
+
+    <div class="section-label">Mindra <span style="font-size:9px;letter-spacing:0;color:#6ecbf5" id="mindra-status">ready</span></div>
+    <div class="stat-row"><span class="stat-key">workflows run</span><span class="stat-val" id="mindra-calls">0</span></div>
+    <div class="stat-row"><span class="stat-key">self-healing</span><span class="stat-val" style="color:#6ecbf5">active</span></div>
+    <div class="stat-row"><span class="stat-key">anomaly detection</span><span class="stat-val" style="color:#6ecbf5">active</span></div>
   </div>
 </div>
 
@@ -611,15 +653,32 @@ const S='', B='';
 const msgs = document.getElementById('messages');
 const input = document.getElementById('chat-input');
 const btn = document.getElementById('send-btn');
+const budgetInput = document.getElementById('budget-input');
+const budgetSpentLbl = document.getElementById('budget-spent-lbl');
 let sending = false;
 let lastSentMessage = '';
+let totalCreditsSpent = 0;
+
+function updateBudgetDisplay(spent) {
+  if (spent != null) totalCreditsSpent = spent;
+  const budget = parseInt(budgetInput ? budgetInput.value : 5) || 5;
+  if (budgetSpentLbl) {
+    if (totalCreditsSpent > 0) {
+      const pct = Math.min(100, Math.round(totalCreditsSpent / budget * 100));
+      budgetSpentLbl.innerHTML = '<span style="color:' + (pct >= 80 ? 'var(--orange)' : 'var(--dim)') + '">' + totalCreditsSpent + '/' + budget + ' used (' + pct + '%)</span>';
+    } else {
+      budgetSpentLbl.textContent = '';
+    }
+  }
+}
+
 function retryLastMessage() {
   if (lastSentMessage && !sending) {
     input.value = lastSentMessage;
     sendMessage();
   }
 }
-let lastStrategyData = null; // store last strategy result for flow view
+let lastStrategyData = null;
 
 function showView(v) {
   const chat  = document.getElementById('view-chat');
@@ -678,7 +737,7 @@ async function _loadKeyStatus() {
     const el = document.getElementById('flow-key-status');
     if (el) {
       const parts = [
-        'openai', 'exa', 'zeroclick', 'nvm', 'apify'
+        'openai', 'exa', 'zeroclick', 'nvm', 'apify', 'mindra'
       ].map(k => {
         const ok = _keyStatus[k];
         return '<span style="color:' + (ok?'var(--green)':'var(--red)') + '">' + k + '</span>';
@@ -820,25 +879,61 @@ function renderFlowView(data) {
   // ── AUDIT ─────────────────────────────────────────────────────────────────────
   if (scored.length > 0) {
     html += '<div class="fg-stage" id="fgn-audit" style="margin-top:44px">';
-    html += '<div class="fg-stage-lbl"><span class="fg-step-n">02</span> Audit — real HTTP latency · OpenAI quality scoring · price</div>';
-    html += '<div class="fg-stage-body"><div class="fg-audit-chips">';
-    // Sort by score so we can see differentiation clearly
+    html += '<div class="fg-stage-lbl"><span class="fg-step-n">02</span> Audit — real HTTP probes · OpenAI scoring · weighted formula</div>';
+    html += '<div class="fg-stage-body">';
+    // Score formula legend
+    html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;font-size:9px;color:var(--dim)">';
+    html += '<span style="color:#ccc;font-weight:500">Score formula:</span>';
+    html += '<span>Quality <span style="color:#dd8833">40%</span></span>';
+    html += '<span>Consistency <span style="color:#dd8833">25%</span></span>';
+    html += '<span>Latency <span style="color:#dd8833">20%</span></span>';
+    html += '<span>Price <span style="color:#dd8833">15%</span></span>';
+    html += '</div>';
+    html += '<div class="fg-audit-chips">';
     const sortedScored = scored.slice().sort((a,b) => (b.overall_score||0) - (a.overall_score||0));
     sortedScored.forEach(s => {
       const sc  = s.overall_score || 0;
       const cls = sc >= 0.65 ? 'buy' : sc >= 0.45 ? 'watch' : 'avoid';
       const col = sc >= 0.65 ? 'var(--green)' : sc >= 0.45 ? 'var(--orange)' : 'var(--red)';
-      const lat = s.avg_latency_ms ? Math.round(s.avg_latency_ms) + 'ms' : '—';
-      const qual = (s.quality_score||0).toFixed(2) + (s.quality_score===0.5?'*':'');
-      html += '<div class="fg-chip ' + cls + '">';
-      html += '<div class="fg-chip-team">' + e(s.team||'') + '</div>';
-      html += '<div class="fg-chip-score" style="color:' + col + '">' + sc.toFixed(2) + '</div>';
-      html += '<div class="fg-chip-label" style="color:' + col + '">' + e(s.roi_decision||cls.toUpperCase()) + '</div>';
-      html += '<div class="fg-chip-sub">' + lat + ' · q=' + qual + '</div>';
+      // Component scores
+      const q  = s.quality_score != null ? s.quality_score : null;
+      const cs = s.consistency_score != null ? s.consistency_score : null;
+      const ls = s.latency_score != null ? s.latency_score : null;
+      const ps = s.price_score != null ? s.price_score : null;
+      const lat = s.avg_latency_ms ? Math.round(s.avg_latency_ms) + 'ms' : null;
+      const qEst = (q === 0.5); // estimated quality flag
+      // Bar width helper (percent of chip width)
+      function bar(v, c) {
+        const w = Math.round((v||0)*100);
+        return '<div style="height:3px;background:#1a1a1a;border-radius:2px;margin-top:2px"><div style="width:'+w+'%;height:3px;background:'+c+';border-radius:2px"></div></div>';
+      }
+      html += '<div class="fg-chip ' + cls + '" style="min-width:150px">';
+      html += '<div class="fg-chip-team">' + e((s.team||'').substring(0,20)) + '</div>';
+      html += '<div style="display:flex;align-items:baseline;gap:6px;margin:4px 0">';
+      html += '<div class="fg-chip-score" style="color:' + col + ';font-size:28px">' + sc.toFixed(2) + '</div>';
+      html += '<div style="font-size:8px;color:' + col + ';text-transform:uppercase;letter-spacing:0.07em;font-weight:500">' + e(s.roi_decision||cls.toUpperCase()) + '</div>';
+      html += '</div>';
+      // Component breakdown rows
+      if (q != null) {
+        html += '<div style="font-size:9px;color:var(--dim);display:flex;justify-content:space-between"><span>Quality' + (qEst?' <span style="color:var(--dim2)">est.</span>':'') + '</span><span style="color:#ccc">' + q.toFixed(2) + '</span></div>';
+        html += bar(q, '#4488cc');
+      }
+      if (cs != null) {
+        html += '<div style="font-size:9px;color:var(--dim);display:flex;justify-content:space-between"><span>Consistency</span><span style="color:#ccc">' + cs.toFixed(2) + '</span></div>';
+        html += bar(cs, '#8844cc');
+      }
+      if (ls != null) {
+        html += '<div style="font-size:9px;color:var(--dim);display:flex;justify-content:space-between"><span>Latency' + (lat?' <span style="color:var(--dim2)">'+lat+'</span>':'') + '</span><span style="color:#ccc">' + ls.toFixed(2) + '</span></div>';
+        html += bar(ls, '#44aa66');
+      }
+      if (ps != null) {
+        html += '<div style="font-size:9px;color:var(--dim);display:flex;justify-content:space-between"><span>Price value</span><span style="color:#ccc">' + ps.toFixed(2) + '</span></div>';
+        html += bar(ps, '#cc8833');
+      }
       html += '</div>';
     });
     html += '</div>';
-    html += '<div style="font-size:9px;color:var(--dim2);margin-top:8px">* quality estimated (endpoint is paid). Score = latency + quality + price + consistency. Sorted highest → lowest.</div>';
+    html += '<div style="font-size:9px;color:var(--dim2);margin-top:10px">Quality <i>est.</i> = endpoint requires payment, tested availability only. Sorted best → worst.</div>';
     html += '</div></div>';
   }
 
@@ -848,17 +943,24 @@ function renderFlowView(data) {
     html += '<div class="fg-stage-lbl"><span class="fg-step-n" style="background:#0d2a0d;color:var(--green)">03</span> Purchase — Nevermined order_plan() · ' + purchases.length + ' blockchain tx</div>';
     html += '<div class="fg-stage-body">';
     purchases.forEach(p => {
-      const tx = (p.tx_hash||'').substring(0,20);
+      const tx    = (p.tx_hash||'').substring(0,20);
       const badge = p.repeat_purchase ? 'background:#2a2a00;color:var(--orange)' : 'background:#0d2a0d;color:var(--green)';
-      html += '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #0a1a0a">';
-      html += '<div style="color:var(--green);font-size:18px;flex-shrink:0;line-height:1">✓</div>';
-      html += '<div style="flex:1"><div style="font-weight:500;font-size:13px">' + e(p.team||'') + '<span style="font-size:8px;padding:2px 5px;border-radius:2px;margin-left:6px;' + badge + '">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span></div>';
-      if (p.audit_score) html += '<div style="font-size:9px;color:var(--dim);margin-top:2px">' + e(p.roi_decision||'BUY') + ' · score ' + (p.audit_score||0).toFixed(2) + (p.price_per_credit?' · '+p.price_per_credit+' cr/req':'') + '</div>';
+      const paid  = p.plan_price || (p.price_per_credit ? p.price_per_credit + ' cr/req' : null);
+      html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #0a1a0a">';
+      html += '<div style="color:var(--green);font-size:16px;flex-shrink:0;line-height:1.2;margin-top:1px">✓</div>';
+      html += '<div style="flex:1">';
+      html += '<div style="font-weight:500;font-size:13px">' + e(p.team||'') + '<span style="font-size:8px;padding:2px 5px;border-radius:2px;margin-left:6px;' + badge + '">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span></div>';
+      html += '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:9px;color:var(--dim);margin-top:3px">';
+      html += '<span>' + e(p.roi_decision||'BUY') + '</span>';
+      if (p.audit_score) html += '<span>score <span style="color:#ccc">' + (p.audit_score||0).toFixed(2) + '</span></span>';
+      if (paid) html += '<span>paid <span style="color:var(--green)">' + e(paid) + '</span></span>';
+      if (p.credits_purchased) html += '<span><span style="color:#ccc">' + p.credits_purchased + '</span> credits acquired</span>';
       html += '</div>';
-      if (tx) html += '<div style="font-family:monospace;font-size:9px;color:var(--dim2);flex-shrink:0">' + e(tx) + '…</div>';
+      html += '</div>';
+      if (tx) html += '<div style="font-family:monospace;font-size:9px;color:var(--dim2);flex-shrink:0;margin-top:3px">' + e(tx) + '…</div>';
       html += '</div>';
     });
-    html += '<div style="font-size:9px;color:var(--dim2);margin-top:6px">See agents running in the Business tab →</div>';
+    html += '<div style="font-size:9px;color:var(--dim2);margin-top:8px">Each tx = real Nevermined order_plan() on Base Sepolia. See agents running in the Business tab →</div>';
     html += '</div></div>';
   } else if (scored.length > 0) {
     html += '<div style="margin-top:44px;border:1px dashed var(--border);border-radius:6px;padding:12px 14px;text-align:center;color:var(--dim2);font-size:10px" id="fgn-purchase">No purchases yet — all scored agents failed payment or had insufficient budget.</div>';
@@ -979,7 +1081,8 @@ function renderBizDashboard(data) {
       const tplKey = (tri.template||'').toLowerCase();
       const accentCol = tmplColors[tplKey] || '#334455';
 
-      html += '<div class="biz-agent-card ' + (tplKey||'') + '" style="border-color:' + accentCol + '20;--accent:' + accentCol + '">';
+      const isProcessing = !out || !out.content;
+      html += '<div class="biz-agent-card ' + (tplKey||'') + (isProcessing ? ' processing' : '') + '" style="border-color:' + accentCol + '20;--accent:' + accentCol + '">';
       html += '<div style="height:2px;background:' + accentCol + ';border-radius:2px 2px 0 0;margin:-16px -16px 12px -16px"></div>';
 
       // Card header
@@ -997,10 +1100,11 @@ function renderBizDashboard(data) {
         html += '<div style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span>Live response</div>';
         html += '<div class="biz-agent-output">' + e(out.content.substring(0,400)).replace(/\\n/g,'<br>') + '</div>';
       } else if (tri.task) {
-        html += '<div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px">Assigned task</div>';
+        html += '<div class="biz-processing-label"><span class="spinner"></span>Processing task...</div>';
         html += '<div class="biz-agent-output loading">' + e(tri.task.substring(0,200)) + '</div>';
       } else {
-        html += '<div class="biz-agent-output loading">Agent purchased — query it below to get started.</div>';
+        html += '<div class="biz-processing-label"><span class="spinner"></span>Initializing agent...</div>';
+        html += '<div class="biz-agent-output loading">Connecting to agent — waiting for response...</div>';
       }
 
       // Transaction line
@@ -1421,7 +1525,7 @@ function renderOrchestration(data) {
   }
 }
 
-const ORCH_IDS = {exa:'orch-exa', apify:'orch-apify', openai:'orch-openai', nevermined:'orch-nevermined', trinity:'orch-trinity', social:'orch-social'};
+const ORCH_IDS = {mindra:'orch-mindra', exa:'orch-exa', apify:'orch-apify', openai:'orch-openai', nevermined:'orch-nevermined', trinity:'orch-trinity', social:'orch-social'};
 
 function orchSetAgent(id, status, msg) {
   const boxId = ORCH_IDS[id] || ('orch-agent-' + id);
@@ -1438,7 +1542,7 @@ function orchSetAgent(id, status, msg) {
 }
 
 function orchSetRunning() {
-  ['exa','apify','openai','nevermined','trinity','social'].forEach(id => {
+  ['mindra','exa','apify','openai','nevermined','trinity','social'].forEach(id => {
     orchSetAgent(id, 'running', 'queued');
   });
 }
@@ -1597,7 +1701,7 @@ async function sendMessage() {
     const resp = await fetch(B + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text }),
+      body: JSON.stringify({ message: text, budget_credits: parseInt(budgetInput ? budgetInput.value : 5) || 5 }),
       signal: ctrl.signal,
     });
 
@@ -1733,7 +1837,8 @@ async function sendMessage() {
               }
               // Business strategy result card + live orchestration update
               if (r && typeof r === 'object' && r.goal && r.steps) {
-                lastStrategyData = r; // save for flow + business view
+                lastStrategyData = r;
+                updateBudgetDisplay(r.credits_spent || 0);
                 auditCards += renderStrategyCard(r);
                 renderOrchestration(r);
                 // Show "Business" tab button as active indicator after strategy completes
@@ -1835,8 +1940,8 @@ async function refreshStats() {
 
   // Sponsor tool indicators
   const tools = stats ? (stats.tools || {}) : {};
-  const toolDotMap = {openai:'dot-openai', exa:'dot-exa', nevermined:'dot-nvm', zeroclick:'dot-zc', apify:'dot-apify'};
-  const toolCountMap = {openai:'tool-openai-count', exa:'tool-exa-count', nevermined:'tool-nvm-count', apify:'tool-apify-count'};
+  const toolDotMap = {openai:'dot-openai', exa:'dot-exa', nevermined:'dot-nvm', zeroclick:'dot-zc', apify:'dot-apify', mindra:'dot-mindra'};
+  const toolCountMap = {openai:'tool-openai-count', exa:'tool-exa-count', nevermined:'tool-nvm-count', apify:'tool-apify-count', mindra:'tool-mindra-count'};
   Object.entries(toolDotMap).forEach(([t, dotId]) => {
     const info = tools[t] || {};
     const st = info.status || 'unknown';
@@ -1870,6 +1975,20 @@ async function refreshStats() {
     } else {
       zcStatusEl.textContent = 'pending approval';
       zcStatusEl.style.color = 'var(--orange)';
+    }
+  }
+
+  // Mindra sidebar stats
+  const mindraInfo = tools['mindra'] || {};
+  const mindraCallsEl = document.getElementById('mindra-calls');
+  if (mindraCallsEl) mindraCallsEl.textContent = mindraInfo.calls || 0;
+  const mindraStatusEl = document.getElementById('mindra-status');
+  if (mindraStatusEl) {
+    if (mindraInfo.status === 'active' || mindraInfo.calls > 0) {
+      mindraStatusEl.textContent = 'active';
+      mindraStatusEl.style.color = '#6ecbf5';
+    } else {
+      mindraStatusEl.textContent = 'ready';
     }
   }
 
