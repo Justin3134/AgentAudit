@@ -1158,27 +1158,30 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         "roi_analysis": {},
     }
 
-    # --- Step 1: Exa domain research ---
+    # --- Step 1: Exa competitive intelligence (AI agents/tools in this domain) ---
     report["steps"].append("exa_research")
     exa_data = {}
     if EXA_API_KEY:
         try:
-            exa_data = await analyze_with_exa("", goal, EXA_API_KEY)
+            # Search for competing AI agent tools/services in this domain, not generic articles
+            competitive_query = f"best AI agent tools services for {goal} 2025 SaaS automation"
+            exa_data = await analyze_with_exa("", competitive_query, EXA_API_KEY)
             _analytics_mod.record_tool_call("exa", "ok")
         except Exception as e:
             exa_data = {"error": str(e)}
-    # When called without URL, highlights come from search_context results
-    _direct_highlights = exa_data.get("highlights", [])
     _sc = exa_data.get("search_context", [])
-    _sc_highlights = [h for r in _sc for h in r.get("highlights", []) if h]
-    _all_highlights = (_direct_highlights or _sc_highlights)[:5]
+    # Build competitor intelligence: extract tool/product names and what they do
     report["exa_research"] = {
         "summary": exa_data.get("summary", "")[:800],
-        "highlights": _all_highlights,
+        "highlights": (exa_data.get("highlights") or [h for r in _sc for h in r.get("highlights", []) if h])[:5],
         "search_context": _sc[:4],
-        # Extract competitor names/domains for competitive analysis table
         "competitors": [
-            {"title": r.get("title", ""), "url": r.get("url", ""), "snippet": (r.get("highlights") or [""])[0][:120]}
+            {
+                "title": r.get("title", ""),
+                "url": r.get("url", ""),
+                "domain": r.get("url", "").replace("https://", "").replace("http://", "").split("/")[0],
+                "snippet": (r.get("highlights") or [""])[0][:150],
+            }
             for r in _sc[:4]
         ],
     }

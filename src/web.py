@@ -719,214 +719,155 @@ function _arrow() {
 function renderFlowView(data) {
   const canvas = document.getElementById('flow-canvas');
   if (!data) {
-    canvas.innerHTML = '<div style="color:var(--dim2);padding:40px 0;text-align:center">Run a strategy in Chat to see the workflow graph here.<br><br><span style="font-size:10px">Try: "I want to start a marketing agency"</span></div>';
+    canvas.innerHTML = '<div style="color:var(--dim2);padding:60px 0;text-align:center;font-size:12px">Run a strategy in Chat to see the workflow graph here.<br><br><span style="font-size:10px;color:var(--dim2)">Try: "I want to start a marketing agency"</span></div>';
     return;
   }
-  const scored = (data.audit_scores || []).filter(s => s.team);
-  const apify  = data.apify_actors || [];
-  const exa    = data.exa_research || {};
-  const exaSearch = exa.search_context || [];
-  const allMkt = data.all_marketplace_results || data.candidates || [];
+  const scored  = (data.audit_scores || []).filter(s => s.team);
+  const apify   = data.apify_actors || [];
+  const exa     = data.exa_research || {};
+  const exaComps = exa.competitors || [];
+  const allMkt  = data.all_marketplace_results || data.candidates || [];
   const purchases = (data.purchases||[]).filter(p => p.purchased);
-  const caps        = data.goal_capabilities || [];
-  const trinityPlan = data.trinity_plan || [];
-  const ad          = data.zeroclick_ad || null;
-  const execSynth   = data.execution_synthesis || '';
-  const bizOutputs  = (data.business_outputs || []).filter(b => b.status === 'ok' && (b.content||'').length > 20);
-  const bizBrief    = data.business_brief || {};
-  const tmplColors  = {cornelius:'#334499',ruby:'#993344',outbound:'#449933',webmaster:'#996633'};
+  const caps    = data.goal_capabilities || [];
+  const ad      = data.zeroclick_ad || null;
 
-  let html = '<div class="fg-wrap">';
+  let html = '<div class="fg-wrap" style="position:relative">';
 
   // ── GOAL ──────────────────────────────────────────────────────────────────────
   html += '<div id="fgn-goal" class="fg-goal-box">';
-  html += '<div class="fg-goal-sub">Business Goal</div>';
+  html += '<div class="fg-goal-sub">Goal</div>';
   html += '<div class="fg-goal-title">' + e(data.goal||'') + '</div>';
-  if (caps.length) html += '<div class="fg-goal-caps">' + caps.map(e).join(' · ') + '</div>';
+  if (caps.length) html += '<div class="fg-goal-caps">' + caps.slice(0,4).map(e).join(' · ') + '</div>';
   html += '</div>';
 
-  // ── STAGE 1 · DISCOVER ───────────────────────────────────────────────────────
-  html += '<div class="fg-stage" id="fgn-discover"><div class="fg-stage-lbl"><span class="fg-step-n">01</span> Discover — parallel search across 3 sources</div><div class="fg-stage-body">';
+  // ── DISCOVER — 3 parallel branches ───────────────────────────────────────────
+  html += '<div style="margin-top:44px;position:relative;z-index:2" id="fgn-discover">';
+  html += '<div style="font-size:8px;text-transform:uppercase;letter-spacing:0.1em;color:var(--dim);text-align:center;margin-bottom:12px">01 · Discover — parallel search</div>';
   html += '<div class="fg-branches">';
 
-  // Marketplace
-  html += '<div class="fg-branch mkt" id="fgn-mkt"><div class="fg-branch-hdr"><span>Marketplace</span><span>' + allMkt.length + '</span></div><div class="fg-branch-body">';
+  // Marketplace branch
+  html += '<div class="fg-branch mkt" id="fgn-mkt">';
+  html += '<div class="fg-branch-hdr"><span>Nevermined Marketplace</span><span style="font-size:9px;color:var(--dim)">' + allMkt.length + ' agents</span></div>';
+  html += '<div class="fg-branch-body">';
+  if (allMkt.length === 0) {
+    html += '<div style="color:var(--dim2);font-size:10px;padding:6px 0">Searching...</div>';
+  }
   allMkt.slice(0,5).forEach(m => {
-    const sc = scored.find(s => s.team === m.team);
+    const sc  = scored.find(s => s.team === m.team);
     const scv = sc ? sc.overall_score : null;
     const bc  = scv === null ? 'var(--border)' : scv >= 0.6 ? '#1a4a1a' : scv >= 0.4 ? '#4a3a00' : '#4a1a1a';
-    const tc  = scv === null ? ''    : scv >= 0.6 ? 'var(--green)' : scv >= 0.4 ? 'var(--orange)' : 'var(--red)';
-    html += '<div class="fg-mini-card" style="border-color:' + bc + '"><div style="display:flex;justify-content:space-between">';
-    html += '<div class="fg-mini-name">' + e((m.team||'').substring(0,20)) + '</div>';
-    if (scv !== null) html += '<div style="font-size:9px;color:' + tc + '">' + scv.toFixed(2) + '</div>';
-    html += '</div><div class="fg-mini-meta">' + e((m.category||m.price||'').substring(0,28)) + '</div></div>';
+    const tc  = scv === null ? 'var(--dim)' : scv >= 0.6 ? 'var(--green)' : scv >= 0.4 ? 'var(--orange)' : 'var(--red)';
+    html += '<div class="fg-mini-card" style="border-color:' + bc + '">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+    html += '<div class="fg-mini-name">' + e((m.team||'').substring(0,22)) + '</div>';
+    if (scv !== null) html += '<div style="font-size:11px;font-weight:500;color:' + tc + '">' + scv.toFixed(2) + '</div>';
+    html += '</div>';
+    html += '<div class="fg-mini-meta">' + e((m.category||m.price||'').substring(0,30)) + '</div>';
+    html += '</div>';
   });
   html += '</div></div>';
 
-  // Exa
-  html += '<div class="fg-branch exa" id="fgn-exa"><div class="fg-branch-hdr"><span>Exa Research</span><span>' + exaSearch.length + ' pages</span></div><div class="fg-branch-body">';
-  exaSearch.slice(0,4).forEach(r => {
-    const dom = (r.url||'').replace(/https?:\/\//,'').split('/')[0];
-    html += '<div class="fg-mini-card" style="border-color:#332200"><div class="fg-mini-name">' + e((r.title||dom).substring(0,30)) + '</div>';
-    html += '<div class="fg-mini-meta"><a href="' + e(r.url||'#') + '" target="_blank" style="color:#dd8833;text-decoration:none">' + e(dom.substring(0,24)) + ' →</a></div></div>';
+  // Exa competitive intelligence branch
+  const exaLabel = exaComps.length > 0 ? 'Exa · competitive landscape' : 'Exa · competitive research';
+  html += '<div class="fg-branch exa" id="fgn-exa">';
+  html += '<div class="fg-branch-hdr"><span>' + exaLabel + '</span><span style="font-size:9px;color:var(--dim)">' + exaComps.length + ' tools</span></div>';
+  html += '<div class="fg-branch-body">';
+  if (exaComps.length === 0) {
+    html += '<div style="color:var(--dim2);font-size:10px;padding:6px 0">No results — Exa key required</div>';
+  }
+  exaComps.forEach(comp => {
+    const dom = comp.domain || comp.url.replace(/https?:\/\//,'').split('/')[0];
+    html += '<div class="fg-mini-card" style="border-color:#332200">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+    html += '<div class="fg-mini-name">' + e((comp.title||dom).substring(0,28)) + '</div>';
+    html += '<a href="' + e(comp.url||'#') + '" target="_blank" style="font-size:9px;color:#dd8833;text-decoration:none;flex-shrink:0">→</a>';
+    html += '</div>';
+    if (comp.snippet) html += '<div class="fg-mini-meta">' + e(comp.snippet.substring(0,55)) + '…</div>';
+    html += '</div>';
   });
-  if (!exaSearch.length) html += '<div style="color:var(--dim2);font-size:10px;padding:6px 0">No results</div>';
+  // ZeroClick ad inline — naturally placed in competitive analysis
+  if (ad) {
+    html += '<div style="border:1px dashed #1a3a1a;border-radius:3px;padding:5px 7px;margin-top:6px;background:#030a03">';
+    html += '<div style="font-size:8px;color:var(--green);margin-bottom:2px">◉ ZeroClick — related tool</div>';
+    html += '<a href="' + e(ad.click_url||'#') + '" target="_blank" style="font-size:10px;color:#ccc;text-decoration:none;font-weight:500" data-offer-id="' + e(ad.id||'') + '">' + e((ad.title||ad.sponsor||'').substring(0,40)) + ' →</a>';
+    if (ad.message) html += '<div class="fg-mini-meta">' + e(ad.message.substring(0,50)) + '</div>';
+    html += '</div>';
+  }
   html += '</div></div>';
 
-  // Apify
-  html += '<div class="fg-branch api" id="fgn-apify"><div class="fg-branch-hdr"><span>Apify Store</span><span>' + apify.length + ' actors</span></div><div class="fg-branch-body">';
+  // Apify Store branch
+  html += '<div class="fg-branch api" id="fgn-apify">';
+  html += '<div class="fg-branch-hdr"><span>Apify Store</span><span style="font-size:9px;color:var(--dim)">' + apify.length + ' actors</span></div>';
+  html += '<div class="fg-branch-body">';
+  if (apify.length === 0) {
+    html += '<div style="color:var(--dim2);font-size:10px;padding:6px 0">No actors found</div>';
+  }
   apify.slice(0,4).forEach(a => {
     const url = a.url || a.apify_url || '';
-    html += '<div class="fg-mini-card" style="border-color:#221133"><div style="display:flex;justify-content:space-between">';
-    html += '<div class="fg-mini-name">' + e((a.name||'').replace('Apify: ','').substring(0,20)) + '</div>';
-    if (url) html += '<a href="' + e(url) + '" target="_blank" style="font-size:9px;color:#8844cc;text-decoration:none">→</a>';
+    html += '<div class="fg-mini-card" style="border-color:#221133">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+    html += '<div class="fg-mini-name">' + e((a.name||'').replace('Apify: ','').substring(0,22)) + '</div>';
+    if (url) html += '<a href="' + e(url) + '" target="_blank" style="font-size:9px;color:#8844cc;text-decoration:none;flex-shrink:0">→</a>';
     html += '</div>';
-    if (a.runs) html += '<div class="fg-mini-meta">' + a.runs.toLocaleString() + ' runs</div>';
+    if (a.runs) html += '<div class="fg-mini-meta">' + Number(a.runs).toLocaleString() + ' runs</div>';
+    else if (a.description) html += '<div class="fg-mini-meta">' + e((a.description||'').substring(0,45)) + '</div>';
     html += '</div>';
   });
   html += '</div></div>';
 
-  html += '</div></div></div>'; // end branches, stage-body, stage
+  html += '</div></div>'; // branches + discover wrapper
 
-  // ── STAGE 2 · AUDIT ──────────────────────────────────────────────────────────
+  // ── AUDIT ─────────────────────────────────────────────────────────────────────
   if (scored.length > 0) {
-    html += '<div class="fg-stage" id="fgn-audit"><div class="fg-stage-lbl"><span class="fg-step-n">02</span> Audit — real HTTP probes · OpenAI quality scoring</div><div class="fg-stage-body"><div class="fg-audit-chips">';
-    scored.forEach(s => {
+    html += '<div class="fg-stage" id="fgn-audit" style="margin-top:44px">';
+    html += '<div class="fg-stage-lbl"><span class="fg-step-n">02</span> Audit — real HTTP latency · OpenAI quality scoring · price</div>';
+    html += '<div class="fg-stage-body"><div class="fg-audit-chips">';
+    // Sort by score so we can see differentiation clearly
+    const sortedScored = scored.slice().sort((a,b) => (b.overall_score||0) - (a.overall_score||0));
+    sortedScored.forEach(s => {
       const sc  = s.overall_score || 0;
-      const cls = sc >= 0.6 ? 'buy' : sc >= 0.4 ? 'watch' : 'avoid';
-      const col = sc >= 0.6 ? 'var(--green)' : sc >= 0.4 ? 'var(--orange)' : 'var(--red)';
-      html += '<div class="fg-chip ' + cls + '"><div class="fg-chip-team">' + e(s.team||'') + '</div>';
+      const cls = sc >= 0.65 ? 'buy' : sc >= 0.45 ? 'watch' : 'avoid';
+      const col = sc >= 0.65 ? 'var(--green)' : sc >= 0.45 ? 'var(--orange)' : 'var(--red)';
+      const lat = s.avg_latency_ms ? Math.round(s.avg_latency_ms) + 'ms' : '—';
+      const qual = (s.quality_score||0).toFixed(2) + (s.quality_score===0.5?'*':'');
+      html += '<div class="fg-chip ' + cls + '">';
+      html += '<div class="fg-chip-team">' + e(s.team||'') + '</div>';
       html += '<div class="fg-chip-score" style="color:' + col + '">' + sc.toFixed(2) + '</div>';
-      html += '<div class="fg-chip-label" style="color:' + col + '">' + e(s.roi_decision||'') + '</div>';
-      html += '<div class="fg-chip-sub">';
-      if (s.avg_latency_ms) html += Math.round(s.avg_latency_ms) + 'ms';
-      if (s.quality_score !== undefined) html += (s.avg_latency_ms?' · ':'') + 'q=' + (s.quality_score||0).toFixed(2) + (s.quality_score===0.5?'*':'');
-      html += '</div></div>';
-    });
-    html += '</div><div style="font-size:9px;color:var(--dim2);margin-top:8px">* quality estimated — paid endpoint. Scores: latency (real ms) + quality (LLM eval) + price + consistency.</div></div></div>';
-  }
-
-  // ── STAGE 3 · PURCHASE ───────────────────────────────────────────────────────
-  if (purchases.length > 0) {
-    html += '<div class="fg-stage green" id="fgn-purchase"><div class="fg-stage-lbl"><span class="fg-step-n">03</span> Purchase — Nevermined order_plan() · ' + purchases.length + ' blockchain tx</div><div class="fg-stage-body">';
-    purchases.forEach(p => {
-      const tx = (p.tx_hash||'').substring(0,22);
-      const badge = p.repeat_purchase ? 'background:#2a2a00;color:var(--orange)' : 'background:#0d2a0d;color:var(--green)';
-      html += '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #0d2a0d">';
-      html += '<div style="color:var(--green);font-size:16px;flex-shrink:0">✓</div>';
-      html += '<div style="flex:1;font-weight:500">' + e(p.team||'') + '<span style="font-size:8px;padding:2px 5px;border-radius:2px;margin-left:6px;' + badge + '">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span></div>';
-      html += '<div style="font-size:9px;color:var(--dim);flex-shrink:0">' + e(p.roi_decision||'BUY') + ' · ' + (p.audit_score||0).toFixed(2) + '</div>';
-      if (tx) html += '<div style="font-family:monospace;font-size:9px;color:var(--dim2);flex-shrink:0">' + e(tx) + '…</div>';
+      html += '<div class="fg-chip-label" style="color:' + col + '">' + e(s.roi_decision||cls.toUpperCase()) + '</div>';
+      html += '<div class="fg-chip-sub">' + lat + ' · q=' + qual + '</div>';
       html += '</div>';
     });
+    html += '</div>';
+    html += '<div style="font-size:9px;color:var(--dim2);margin-top:8px">* quality estimated (endpoint is paid). Score = latency + quality + price + consistency. Sorted highest → lowest.</div>';
     html += '</div></div>';
   }
 
-  // ── STAGE 4 · EXECUTE (HERO) ─────────────────────────────────────────────────
-  html += '<div class="fg-stage" id="fgn-exec"><div class="fg-stage-lbl"><span class="fg-step-n">04</span> Execute — agents called with your goal · deliverables</div><div class="fg-stage-body">';
-
-  if (bizOutputs.length > 0) {
-    // Real API responses from purchased agents (Trinity/Nexus)
-    bizOutputs.forEach(biz => {
-      html += '<div class="fg-output-card">';
-      html += '<div class="fg-output-hdr"><div class="fg-output-team">' + e(biz.team||'') + '</div>';
-      html += '<div class="fg-output-live"><span class="dot-pulse"></span>live · Trinity response</div></div>';
-      html += '<div class="fg-output-body">' + e(biz.content||'').replace(/\\n/g,'<br>') + '</div>';
-      if (biz.endpoint) html += '<div style="font-size:9px;color:var(--dim2);margin-top:5px">' + e(biz.endpoint.replace('https://','').split('/')[0]) + '</div>';
+  // ── PURCHASE ──────────────────────────────────────────────────────────────────
+  if (purchases.length > 0) {
+    html += '<div class="fg-stage green" id="fgn-purchase" style="margin-top:44px">';
+    html += '<div class="fg-stage-lbl"><span class="fg-step-n" style="background:#0d2a0d;color:var(--green)">03</span> Purchase — Nevermined order_plan() · ' + purchases.length + ' blockchain tx</div>';
+    html += '<div class="fg-stage-body">';
+    purchases.forEach(p => {
+      const tx = (p.tx_hash||'').substring(0,20);
+      const badge = p.repeat_purchase ? 'background:#2a2a00;color:var(--orange)' : 'background:#0d2a0d;color:var(--green)';
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #0a1a0a">';
+      html += '<div style="color:var(--green);font-size:18px;flex-shrink:0;line-height:1">✓</div>';
+      html += '<div style="flex:1"><div style="font-weight:500;font-size:13px">' + e(p.team||'') + '<span style="font-size:8px;padding:2px 5px;border-radius:2px;margin-left:6px;' + badge + '">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span></div>';
+      if (p.audit_score) html += '<div style="font-size:9px;color:var(--dim);margin-top:2px">' + e(p.roi_decision||'BUY') + ' · score ' + (p.audit_score||0).toFixed(2) + (p.price_per_credit?' · '+p.price_per_credit+' cr/req':'') + '</div>';
+      html += '</div>';
+      if (tx) html += '<div style="font-family:monospace;font-size:9px;color:var(--dim2);flex-shrink:0">' + e(tx) + '…</div>';
       html += '</div>';
     });
-    html += '<div style="height:8px"></div>';
+    html += '<div style="font-size:9px;color:var(--dim2);margin-top:6px">See agents running in the Business tab →</div>';
+    html += '</div></div>';
+  } else if (scored.length > 0) {
+    html += '<div style="margin-top:44px;border:1px dashed var(--border);border-radius:6px;padding:12px 14px;text-align:center;color:var(--dim2);font-size:10px" id="fgn-purchase">No purchases yet — all scored agents failed payment or had insufficient budget.</div>';
   }
-
-  // Execution synthesis (specific deliverables — always shown)
-  if (execSynth) {
-    const hasTrinityOutputs = bizOutputs.length > 0;
-    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--dim);margin-bottom:8px">' + (hasTrinityOutputs ? 'additionally synthesized' : 'AI-generated deliverables for your goal') + ' — via OpenAI + Exa context</div>';
-    const synthLines = execSynth.split('\\n').filter(l => l.trim().length > 0);
-    const acols = ['#334499','#993344','#449933','#996633'];
-    const synthSections = [];
-    let curSec = [];
-    synthLines.forEach(ln => {
-      if (/^(###|\\*\\*[A-Z]|\\d\\.\\s)/.test(ln) && curSec.length > 0) { synthSections.push(curSec.join(' ')); curSec = []; }
-      curSec.push(ln);
-    });
-    if (curSec.length > 0) synthSections.push(curSec.join(' '));
-    if (synthSections.length > 1) {
-      synthSections.slice(0,4).forEach((sec, i) => {
-        const rawH  = sec.replace(/^(###\\s+|\\*\\*)/,'').split(/[:(]/)[0].replace(/\\*\\*/g,'').trim().substring(0,35);
-        const body = sec.replace(/^[^:]+:/,'').replace(/\\*\\*/g,'').trim().substring(0,500);
-        const c = acols[i % acols.length];
-        html += '<div class="fg-synth-card" style="border-color:' + c + '">';
-        html += '<div class="fg-synth-title" style="color:#ccc">' + e(rawH||('Section '+(i+1))) + '<span style="display:inline-flex;align-items:center;gap:3px;margin-left:8px;font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:0.06em"><span class="dot-pulse" style="background:' + c + '"></span>executing</span></div>';
-        html += '<div class="fg-synth-body">' + e(body) + '</div>';
-        html += '</div>';
-      });
-    } else {
-      html += '<div class="fg-synth-card"><div class="fg-synth-body">' + e(execSynth.substring(0,600)) + '</div></div>';
-    }
-  }
-
-  if (!bizOutputs.length && !execSynth) {
-    html += '<div style="color:var(--dim2);font-size:10px;padding:8px 0">No execution output yet — run a strategy with a specific business goal.</div>';
-  }
-  html += '</div></div>'; // end exec stage
-
-  // ── ZEROCLICK (after execute, contextual) ────────────────────────────────────
-  if (ad) {
-    html += '<div style="border:1px solid #1a4a1a;border-radius:4px;padding:10px 14px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;background:#040a04">';
-    html += '<div><div style="font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">◉ ZeroClick — AI-native contextual ad</div>';
-    html += '<div style="font-weight:500;font-size:12px">' + e(ad.title||ad.sponsor||'') + '</div>';
-    html += '<div style="font-size:10px;color:var(--dim);margin-top:2px">' + e((ad.message||'').substring(0,80)) + '</div></div>';
-    html += '<a href="' + e(ad.click_url||'#') + '" target="_blank" style="font-size:10px;color:var(--green);text-decoration:none;border:1px solid #1a4a1a;padding:6px 12px;border-radius:3px;white-space:nowrap;flex-shrink:0" data-offer-id="' + e(ad.id||'') + '">' + e(ad.cta||'Learn more') + ' →</a>';
-    html += '</div>';
-  }
-
-  // ── STAGE 5 · TRINITY FLEET ──────────────────────────────────────────────────
-  if (trinityPlan.length > 0) {
-    window._trinityFleet = {agents: trinityPlan, apify, goal: data.goal};
-    html += '<div class="fg-stage" id="fgn-trinity"><div class="fg-stage-lbl"><span class="fg-step-n">05</span> Trinity Fleet — AbilityAI autonomous agents · click to explore</div><div class="fg-stage-body"><div class="fg-trinity-grid">';
-    trinityPlan.forEach((ag, i) => {
-      const col = tmplColors[(ag.template||'').toLowerCase()] || '#444466';
-      html += '<div class="fg-ta" style="border:1px solid ' + col + ';background:#040404" data-trinity-idx="' + i + '">';
-      html += '<div class="fg-ta-role" style="color:' + col + '">' + e(ag.template||'') + '</div>';
-      html += '<div class="fg-ta-name">' + e(ag.name||'') + '</div>';
-      html += '<div class="fg-ta-task">' + e((ag.task||'').substring(0,70)) + '</div>';
-      if (ag.output_preview) html += '<div class="fg-ta-out">' + e(ag.output_preview.substring(0,60)) + '</div>';
-      html += '<div class="fg-ta-foot"><span class="dot-pulse"></span><span style="color:var(--green)">running</span><span style="margin-left:auto;color:var(--dim2);font-size:9px">tap →</span></div>';
-      html += '</div>';
-    });
-    html += '</div></div></div>';
-  }
-
-  // ── NEXT ACTIONS ─────────────────────────────────────────────────────────────
-  const nextActions = bizBrief.next_suggested_actions || [
-    'Run a deeper competitive analysis for ' + (data.goal||'this goal'),
-    'Generate a pricing strategy and revenue model',
-    'Find more specialized agents for this business',
-  ];
-  html += '<div class="fg-next"><div class="fg-next-title">Next Actions</div>';
-  const labels = ['(a)','(b)','(c)'];
-  nextActions.slice(0,3).forEach((action, i) => {
-    html += '<button class="fg-next-btn" data-action="' + e(action) + '">';
-    html += '<span style="color:var(--dim);font-size:10px;flex-shrink:0">' + labels[i] + '</span>';
-    html += '<span>' + e(action) + '</span>';
-    html += '<span style="color:var(--dim2);margin-left:auto">→</span></button>';
-  });
-  html += '</div>';
 
   html += '</div>'; // fg-wrap
   canvas.innerHTML = html;
 
-  // Event wiring
-  canvas.querySelectorAll('.fg-next-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const a = btn.dataset.action;
-      if (a) { showView('chat'); const inp = document.getElementById('chat-input'); if(inp){inp.value=a; document.getElementById('send-btn').click();} }
-    });
-  });
-  canvas.querySelectorAll('[data-trinity-idx]').forEach(card => {
-    card.addEventListener('click', () => openTrinityPanel(parseInt(card.dataset.trinityIdx)));
-  });
+  // Track ZeroClick click
   canvas.querySelectorAll('[data-offer-id]').forEach(el => {
     el.addEventListener('click', () => {
       const id = el.dataset.offerId;
@@ -937,65 +878,66 @@ function renderFlowView(data) {
 }
 
 function _drawFlowLines(canvas) {
-  // Remove old SVG if any
   const old = canvas.querySelector('.fg-svg');
   if (old) old.remove();
 
   const cr = canvas.getBoundingClientRect();
-  const h = canvas.scrollHeight;
+  const h  = canvas.scrollHeight + 20;
 
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('class', 'fg-svg');
-  svg.setAttribute('style', 'position:absolute;top:0;left:0;width:100%;height:' + h + 'px;pointer-events:none;overflow:visible');
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('class','fg-svg');
+  svg.setAttribute('style','position:absolute;top:0;left:0;width:100%;height:'+h+'px;pointer-events:none;overflow:visible');
 
-  function nodeRect(id) {
+  function nr(id) {
     const el = document.getElementById(id);
     if (!el) return null;
     const r = el.getBoundingClientRect();
-    return { top: r.top - cr.top + canvas.scrollTop, left: r.left - cr.left, bottom: r.bottom - cr.top + canvas.scrollTop, right: r.right - cr.left, cx: r.left - cr.left + r.width/2, cy_top: r.top - cr.top + canvas.scrollTop, cy_bot: r.bottom - cr.top + canvas.scrollTop };
+    const st = canvas.scrollTop || 0;
+    return {
+      cx: r.left - cr.left + r.width/2,
+      cy_top: r.top - cr.top + st,
+      cy_bot: r.bottom - cr.top + st,
+    };
   }
 
-  function bezier(x1,y1,x2,y2,color,width) {
+  function line(x1,y1,x2,y2,col,w) {
     const my = (y1+y2)/2;
     const p = document.createElementNS('http://www.w3.org/2000/svg','path');
-    p.setAttribute('d','M'+x1+','+y1+' C'+x1+','+(y1+(my-y1)*0.7)+' '+x2+','+(y2-(my-y1)*0.7)+' '+x2+','+y2);
-    p.setAttribute('stroke',color||'#333');
-    p.setAttribute('stroke-width',width||'1');
+    p.setAttribute('d','M'+x1+','+y1+' C'+x1+','+(y1+(my-y1)*0.75)+' '+x2+','+(y2-(my-y1)*0.75)+' '+x2+','+y2);
+    p.setAttribute('stroke',col||'#2a2a2a');
+    p.setAttribute('stroke-width',w||'1');
     p.setAttribute('fill','none');
-    p.setAttribute('opacity','0.6');
+    p.setAttribute('opacity','0.7');
     svg.appendChild(p);
   }
 
-  const goal    = nodeRect('fgn-goal');
-  const mkt     = nodeRect('fgn-mkt');
-  const exaN    = nodeRect('fgn-exa');
-  const apifyN  = nodeRect('fgn-apify');
-  const comp    = nodeRect('fgn-comp');
-  const audit   = nodeRect('fgn-audit');
-  const purchase= nodeRect('fgn-purchase');
-  const zc      = nodeRect('fgn-zc');
-  const trinity = nodeRect('fgn-trinity');
-  const exec    = nodeRect('fgn-exec');
+  const goal  = nr('fgn-goal');
+  const disc  = nr('fgn-discover');
+  const mkt   = nr('fgn-mkt');
+  const exaN  = nr('fgn-exa');
+  const api   = nr('fgn-apify');
+  const audit = nr('fgn-audit');
+  const purch = nr('fgn-purchase');
 
-  // Goal → 3 branches
-  if (goal && mkt)    bezier(goal.cx, goal.cy_bot, mkt.cx,    mkt.cy_top,    '#553300', 1);
-  if (goal && exaN)   bezier(goal.cx, goal.cy_bot, exaN.cx,   exaN.cy_top,   '#553300', 1);
-  if (goal && apifyN) bezier(goal.cx, goal.cy_bot, apifyN.cx, apifyN.cy_top, '#553300', 1);
+  // Goal → 3 discovery columns (fan out)
+  if (goal && mkt)   line(goal.cx, goal.cy_bot, mkt.cx,   mkt.cy_top,   '#553300', 1.5);
+  if (goal && exaN)  line(goal.cx, goal.cy_bot, exaN.cx,  exaN.cy_top,  '#553300', 1.5);
+  if (goal && api)   line(goal.cx, goal.cy_bot, api.cx,   api.cy_top,   '#553300', 1.5);
 
-  // 3 branches → Competitive Analysis
-  const nextNode = comp || audit;
-  if (nextNode) {
-    if (mkt)    bezier(mkt.cx,    mkt.cy_bot,    nextNode.cx, nextNode.cy_top, '#333', 1);
-    if (exaN)   bezier(exaN.cx,   exaN.cy_bot,   nextNode.cx, nextNode.cy_top, '#333', 1);
-    if (apifyN) bezier(apifyN.cx, apifyN.cy_bot, nextNode.cx, nextNode.cy_top, '#333', 1);
+  // 3 columns → Audit (fan in)
+  if (audit) {
+    if (mkt)  line(mkt.cx,  mkt.cy_bot,  audit.cx, audit.cy_top, '#2a2a2a', 1);
+    if (exaN) line(exaN.cx, exaN.cy_bot, audit.cx, audit.cy_top, '#2a2a2a', 1);
+    if (api)  line(api.cx,  api.cy_bot,  audit.cx, audit.cy_top, '#2a2a2a', 1);
+  } else if (purch && disc) {
+    // If no audit, connect discover directly to purchase
+    if (mkt)  line(mkt.cx,  mkt.cy_bot,  purch.cx, purch.cy_top, '#1a4a1a', 1);
+    if (exaN) line(exaN.cx, exaN.cy_bot, purch.cx, purch.cy_top, '#1a4a1a', 1);
+    if (api)  line(api.cx,  api.cy_bot,  purch.cx, purch.cy_top, '#1a4a1a', 1);
   }
 
-  // Vertical chain: comp → audit → purchase → zc → trinity → exec
-  const chain = [comp, audit, purchase, zc, trinity, exec].filter(Boolean);
-  for (let i = 0; i < chain.length-1; i++) {
-    const col = (chain[i] === purchase || chain[i+1] === purchase) ? '#1a4a1a' : (chain[i+1] === zc) ? '#1a3a1a' : '#333';
-    bezier(chain[i].cx, chain[i].cy_bot, chain[i+1].cx, chain[i+1].cy_top, col, 1);
-  }
+  // Audit → Purchase
+  if (audit && purch) line(audit.cx, audit.cy_bot, purch.cx, purch.cy_top, '#1a4a1a', 1.5);
 
   canvas.style.position = 'relative';
   canvas.insertBefore(svg, canvas.firstChild);
@@ -1005,60 +947,88 @@ function _drawFlowLines(canvas) {
 function renderBizDashboard(data) {
   const canvas = document.getElementById('biz-canvas');
   if (!data) {
-    canvas.innerHTML = '<div style="color:var(--dim2);padding:40px 0;text-align:center">Run a strategy in Chat first.<br><span style="font-size:10px;color:var(--dim2)">Try: "build a marketing agency" or "start a food restaurant business"</span></div>';
+    canvas.innerHTML = '<div style="color:var(--dim2);padding:60px 0;text-align:center;font-size:12px">Run a strategy in Chat first.<br><br><span style="font-size:10px">Try: "build a marketing agency"</span></div>';
     return;
   }
   const goal      = data.goal || '';
   const purchases = (data.purchases || []).filter(p => p.purchased);
-  const execSynth = data.execution_synthesis || '';
   const realOuts  = (data.business_outputs || []).filter(b => b.status === 'ok' && (b.content||'').length > 20);
-  const bizBrief  = data.business_brief || {};
+  const execSynth = data.execution_synthesis || '';
   const trinity   = data.trinity_plan || [];
   const tmplColors = {cornelius:'#334499',ruby:'#993344',outbound:'#449933',webmaster:'#996633'};
 
   let html = '';
 
-  // ── HEADER ──
-  html += '<div style="border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:20px">';
-  html += '<div style="font-size:18px;font-weight:500;margin-bottom:5px">' + e(goal) + '</div>';
-  html += '<div style="display:flex;gap:14px;font-size:10px;color:var(--dim);flex-wrap:wrap">';
-  html += '<span style="display:flex;align-items:center;gap:5px"><span class="dot-pulse"></span>Running</span>';
-  if (purchases.length) html += '<span style="color:var(--green)">' + purchases.length + ' purchased</span>';
-  if (realOuts.length)  html += '<span style="color:var(--green)">' + realOuts.length + ' live responses</span>';
+  // ── HEADER ──────────────────────────────────────────────────────────────────
+  html += '<div style="border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:18px">';
+  html += '<div style="font-size:16px;font-weight:500;margin-bottom:4px">' + e(goal) + '</div>';
+  html += '<div style="display:flex;gap:14px;font-size:9px;color:var(--dim);flex-wrap:wrap;text-transform:uppercase;letter-spacing:0.06em">';
+  if (purchases.length) html += '<span style="color:var(--green)">✓ ' + purchases.length + ' agent' + (purchases.length>1?'s':'') + ' purchased</span>';
+  if (realOuts.length)  html += '<span style="color:var(--green)"><span class="dot-pulse"></span> ' + realOuts.length + ' live response' + (realOuts.length>1?'s':'') + '</span>';
+  else html += '<span style="display:flex;align-items:center;gap:5px"><span class="dot-pulse"></span>ready</span>';
   html += '</div></div>';
 
-  // ── TRANSACTIONS ──
+  // ── PURCHASED AGENT CARDS — each with live output + query input ──────────────
   if (purchases.length > 0) {
-    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:8px">Nevermined — blockchain transactions</div>';
-    purchases.forEach(p => {
-      const tx = (p.tx_hash||'').substring(0,22);
+    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:10px">Purchased agents — running</div>';
+    html += '<div class="biz-grid">';
+    purchases.forEach((p, idx) => {
+      const tx  = (p.tx_hash||'').substring(0,18);
+      const out = realOuts.find(o => o.team === p.team || (o.endpoint && p.endpoint && o.endpoint === p.endpoint));
+      const tri = trinity[idx] || {};
+      const tplKey = (tri.template||'').toLowerCase();
+      const accentCol = tmplColors[tplKey] || '#334455';
+
+      html += '<div class="biz-agent-card ' + (tplKey||'') + '" style="border-color:' + accentCol + '20;--accent:' + accentCol + '">';
+      html += '<div style="height:2px;background:' + accentCol + ';border-radius:2px 2px 0 0;margin:-16px -16px 12px -16px"></div>';
+
+      // Card header
+      html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">';
+      html += '<div>';
+      html += '<div class="biz-agent-name">' + e(p.team||'') + '</div>';
+      html += '<div class="biz-agent-role">' + (tri.template ? e(tri.template) + ' · ' : '') + e((p.endpoint||'').replace('https://','').split('/')[0].substring(0,28)) + '</div>';
+      html += '</div>';
       const badge = p.repeat_purchase ? 'background:#2a2a00;color:var(--orange)' : 'background:#0d2a0d;color:var(--green)';
-      html += '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid #1a4a1a;border-radius:4px;margin-bottom:6px;background:#030a03">';
-      html += '<div style="color:var(--green);font-size:14px">✓</div>';
-      html += '<div style="flex:1;font-weight:500;font-size:12px">' + e(p.team||'') + '<span style="font-size:8px;padding:2px 5px;border-radius:2px;margin-left:6px;' + badge + '">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span></div>';
-      if (tx) html += '<div style="font-family:monospace;font-size:9px;color:var(--dim2)">' + e(tx) + '…</div>';
-      html += '<a href="https://nevermined.app" target="_blank" style="font-size:9px;color:var(--dim2);text-decoration:none;flex-shrink:0">view →</a>';
+      html += '<span style="font-size:8px;padding:2px 6px;border-radius:2px;' + badge + ';flex-shrink:0">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span>';
       html += '</div>';
+
+      // Agent output or task
+      if (out && out.content) {
+        html += '<div style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span>Live response</div>';
+        html += '<div class="biz-agent-output">' + e(out.content.substring(0,400)).replace(/\\n/g,'<br>') + '</div>';
+      } else if (tri.task) {
+        html += '<div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px">Assigned task</div>';
+        html += '<div class="biz-agent-output loading">' + e(tri.task.substring(0,200)) + '</div>';
+      } else {
+        html += '<div class="biz-agent-output loading">Agent purchased — query it below to get started.</div>';
+      }
+
+      // Transaction line
+      if (tx) {
+        html += '<div style="font-size:9px;color:var(--dim2);margin-top:8px;display:flex;gap:8px;align-items:center">';
+        html += '<span style="color:var(--green)">✓ NVM</span>';
+        html += '<span style="font-family:monospace">' + e(tx) + '…</span>';
+        if (p.audit_score) html += '<span style="margin-left:auto">score ' + (p.audit_score).toFixed(2) + '</span>';
+        html += '</div>';
+      }
+
+      // Interactive query input
+      html += '<div style="margin-top:10px;display:flex;gap:6px">';
+      html += '<input type="text" placeholder="Ask this agent..." data-agent-idx="' + idx + '" style="flex:1;background:#0a0a0a;border:1px solid var(--border);border-radius:3px;padding:5px 8px;font-size:10px;font-family:inherit;color:var(--fg);outline:none" />';
+      html += '<button data-agent-run="' + idx + '" style="background:transparent;border:1px solid ' + accentCol + ';color:' + accentCol + ';padding:5px 10px;border-radius:3px;font-size:9px;font-family:inherit;cursor:pointer;white-space:nowrap">Run →</button>';
+      html += '</div>';
+
+      // Response area
+      html += '<div class="biz-agent-response" id="biz-resp-' + idx + '" style="display:none;margin-top:8px;font-size:10px;color:#ccc;line-height:1.7;border-left:2px solid ' + accentCol + ';padding-left:8px"></div>';
+
+      html += '</div>'; // biz-agent-card
     });
-    html += '<div style="height:16px"></div>';
+    html += '</div><div style="height:16px"></div>'; // biz-grid
   }
 
-  // ── LIVE AGENT RESPONSES (hero) ──
-  if (realOuts.length > 0) {
-    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--green);margin-bottom:10px">Live Agent Responses</div>';
-    realOuts.forEach(biz => {
-      html += '<div class="fg-output-card" style="margin-bottom:10px">';
-      html += '<div class="fg-output-hdr"><div class="fg-output-team">' + e(biz.team||'') + '</div>';
-      html += '<div class="fg-output-live"><span class="dot-pulse"></span>Trinity · live response</div></div>';
-      html += '<div class="fg-output-body">' + e(biz.content||'').replace(/\\n/g,'<br>') + '</div>';
-      html += '</div>';
-    });
-    html += '<div style="height:16px"></div>';
-  }
-
-  // ── EXECUTION SYNTHESIS (deliverables) ──
+  // ── EXECUTION SYNTHESIS ──────────────────────────────────────────────────────
   if (execSynth) {
-    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:10px">Agent Deliverables — OpenAI synthesis</div>';
+    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:10px">Strategy — OpenAI synthesis of purchased agents</div>';
     const synthLinesB = execSynth.split('\\n').filter(l => l.trim().length > 0);
     const acols2 = ['#334499','#993344','#449933','#996633'];
     const synthSecsB = [];
@@ -1081,33 +1051,63 @@ function renderBizDashboard(data) {
         html += '<div class="fg-synth-body">' + e(body.substring(0,500)) + '</div>';
         html += '</div>';
       });
-    } else if (execSynth) {
+    } else {
       html += '<div class="fg-synth-card"><div class="fg-synth-body">' + e(execSynth.substring(0,800)) + '</div></div>';
     }
-    html += '<div style="height:16px"></div>';
   }
 
-  // ── NEXT ACTIONS ──
-  const nextActions = bizBrief.next_suggested_actions || [
-    'Run deeper competitive analysis for ' + goal,
-    'Generate a pricing strategy for this business',
-    'Find more specialized agents for ' + goal,
-  ];
-  html += '<div class="biz-next"><div class="biz-next-title">What should I do next?</div>';
-  const bizLabels = ['(a)','(b)','(c)'];
-  nextActions.slice(0,3).forEach((action, i) => {
-    html += '<button class="biz-next-action" data-biz-action="' + e(action) + '">';
-    html += '<span style="color:var(--dim);font-size:10px;flex-shrink:0">' + (bizLabels[i]||'') + '</span>';
-    html += '<span>' + e(action) + '</span>';
-    html += '<span style="color:var(--dim2);margin-left:auto">→</span></button>';
-  });
-  html += '</div>';
+  if (!purchases.length && !execSynth) {
+    html += '<div style="color:var(--dim2);font-size:10px;padding:20px 0">No agents purchased yet. Run a strategy in Chat to buy and activate agents.</div>';
+  }
 
   canvas.innerHTML = html;
-  canvas.querySelectorAll('[data-biz-action]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const action = btn.dataset.bizAction;
-      if (action) sendFromBiz(action);
+
+  // Wire up the "Run →" buttons for direct agent queries
+  canvas.querySelectorAll('[data-agent-run]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = parseInt(btn.dataset.agentRun);
+      const inp = canvas.querySelector('[data-agent-idx="' + idx + '"]');
+      const resp = document.getElementById('biz-resp-' + idx);
+      const query = inp ? inp.value.trim() : '';
+      const p = (data.purchases||[]).filter(pp=>pp.purchased)[idx];
+      if (!query || !p) return;
+
+      resp.style.display = 'block';
+      resp.textContent = 'Querying ' + (p.team||'agent') + '...';
+      btn.disabled = true;
+
+      try {
+        const r = await fetch(B + '/api/chat', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({message: 'Query agent "' + (p.team||'') + '" with endpoint ' + (p.endpoint||'') + ': ' + query}),
+        });
+        if (!r.ok) { resp.textContent = 'Error ' + r.status; btn.disabled = false; return; }
+        if (!r.body) { resp.textContent = 'No response'; btn.disabled = false; return; }
+
+        resp.textContent = '';
+        const reader = r.body.getReader();
+        const dec = new TextDecoder();
+        let buf = '', text = '';
+        while (true) {
+          const {done, value} = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, {stream:true});
+          const lines = buf.split('\\n'); buf = lines.pop();
+          let ev = '';
+          for (const ln of lines) {
+            if (ln.startsWith('event: ')) ev = ln.slice(7).trim();
+            else if (ln.startsWith('data: ') && ev === 'token') {
+              try { text += JSON.parse(ln.slice(6)).text||''; } catch(err){}
+              resp.textContent = text;
+            }
+          }
+        }
+        if (!text) resp.textContent = 'No text response.';
+      } catch(err) {
+        resp.textContent = 'Error: ' + err.message;
+      }
+      btn.disabled = false;
     });
   });
 }
