@@ -47,22 +47,26 @@ KNOWN_PURCHASABLE = [
         "category": "social,monitoring,trends",
     },
     {
+        # Mog Markets — $1.00 USDC/request — nvm:erc4337 — needs USDC in wallet to buy
+        # Checkout: https://nevermined.app/checkout/60859172884142288164507163059546691936422006932528002950292307302678850457887
         "team_name": "Mog Markets",
-        "description": "Nevermined hackathon guide agent — finds and queries marketplace services",
+        "description": "API marketplace: find_service (discovery) and buy_and_call (web search, summarization, image gen, weather). $1/request.",
         "endpoint_url": "https://beneficial-essence-production-99c7.up.railway.app/mcp",
-        "plan_id": "80210700025910908916740431903389992758624785780559991487167394553102643149649",
-        "agent_id": "82912941131551845997559074870195234642138086895845726794338119104469804827506",
-        "price_credits": "free",
-        "category": "marketplace,search",
+        "plan_id": "60859172884142288164507163059546691936422006932528002950292307302678850457887",
+        "agent_id": "",  # agent_id=None is passed to get_x402_access_token — empty string causes 404
+        "price_credits": "$1.00 USDC",
+        "category": "marketplace,api",
     },
     {
-        "team_name": "Mog Markets",
-        "description": "Mog Markets Gateway — API marketplace find_service and buy_and_call in one step",
+        # Mog Markets Hackathon Guide — $0.10 USDC/request — cheaper tier
+        # Checkout: https://nevermined.app/checkout/97008325797120983960610080256091504556118455322568723324233173955711405894085
+        "team_name": "Mog Markets Guide",
+        "description": "Nevermined hackathon guide: hackathon_details, hackathon_discover, exa_search, claude_summarize. $0.10/request.",
         "endpoint_url": "https://beneficial-essence-production-99c7.up.railway.app/mcp",
-        "plan_id": "9661082042009636068072391467054896427087238025772062250717418964278633341785",
-        "agent_id": "48640872261251869030033108052183526690631027622085978188430169084356856647939",
-        "price_credits": "free",
-        "category": "marketplace,api",
+        "plan_id": "97008325797120983960610080256091504556118455322568723324233173955711405894085",
+        "agent_id": "",
+        "price_credits": "$0.10 USDC",
+        "category": "marketplace,hackathon",
     },
     {
         # WAGMI / AgentBank — paid plan ($0.01/credit). Subscribe at checkout URL below.

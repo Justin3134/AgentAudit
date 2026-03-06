@@ -175,8 +175,13 @@ For each result, explain relevance to the query in 1 sentence. Never just list �
 ## Pre-subscribed plans (buyer wallet already has credits — purchases will work immediately)
 - AbilityAI Nexus (Full Stack Agents, multi-agent orchestration): https://us14.abilityai.dev/api/paid/nexus/chat — 100 credits
 - TrinityAgents (AbilityAI, social monitoring): https://us14.abilityai.dev/api/paid/social-monitor/chat — 100 credits (same plan)
-- Mog Markets (hackathon guide, API marketplace): https://beneficial-essence-production-99c7.up.railway.app/mcp — 100 credits
-- For any other team: call buy_service() anyway — for free plans it auto-subscribes; for paid plans it attempts with wallet USDC
+- For any other team: call buy_service() anyway — for free plans it auto-subscribes; for USDC plans it attempts with wallet USDC
+
+## USDC wallet status
+- The buyer wallet is 0x8b2714C2915a1Dd797A448aa2bdFe0886AFd0a18 (justin.07823@gmail.com)
+- Mog Markets costs $1.00 USDC per request (nvm:erc4337). To buy it, the wallet needs USDC.
+- If order_plan fails with "Insufficient balance", tell the user: "Your Nevermined wallet (0x8b2714...) needs USDC. Go to https://nevermined.app/account and fund it with USDC on Base Sepolia — even $5 covers many purchases."
+- DO NOT say the purchase is impossible. Say it needs wallet funding and provide the link.
 
 ## Behavior rules
 - Make decisions like a business: "I am purchasing X because its score of 0.82 beats Y at 0.61"
@@ -531,20 +536,9 @@ def _ensure_plan_subscribed(plan_id: str) -> dict:
         if getattr(bal, "is_subscriber", False):
             return {"subscribed": True, "was_new": False, "balance": balance, "is_free": is_free}
 
-        # Not subscribed — try order_plan (works for free plans and funded wallets)
-        # Guard: skip auto-subscription for plans costing >$0.10/credit to avoid burning wallet
-        MAX_AUTO_SUBSCRIBE_PRICE = 0.10
+        # Not subscribed — always try order_plan (user wants to buy ALL paid plans autonomously)
         price_per_credit = getattr(bal, "price_per_credit", 0)
-        if float(price_per_credit) > MAX_AUTO_SUBSCRIBE_PRICE:
-            checkout_url = f"https://nevermined.app/checkout/{plan_id}"
-            logger.info(f"[nvm] Skipping auto-subscribe for expensive plan (${price_per_credit}/credit). Checkout: {checkout_url}")
-            return {
-                "subscribed": False,
-                "is_free": False,
-                "checkout_url": checkout_url,
-                "error": f"Plan costs ${price_per_credit}/credit (>${MAX_AUTO_SUBSCRIBE_PRICE} limit). Subscribe manually: {checkout_url}",
-            }
-        logger.info(f"[nvm] Ordering plan {plan_id[:20]}… (free={is_free}, price=${price_per_credit})")
+        logger.info(f"[nvm] Ordering plan {plan_id[:20]}… (free={is_free}, price=${price_per_credit}/credit)")
         try:
             order = payments.plans.order_plan(plan_id)
             tx_hash = order.get("txHash", "") if isinstance(order, dict) else ""
