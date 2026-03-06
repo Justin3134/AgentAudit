@@ -19,8 +19,41 @@ MODEL_ID = os.environ.get("MODEL_ID", "gpt-4o-mini")
 
 EXA_API_KEY = os.environ.get("EXA_API_KEY", "")
 ZEROCLICK_API_KEY = os.environ.get("ZEROCLICK_API_KEY", "")
+APIFY_API_KEY = os.environ.get("APIFY_API_KEY", "")
 
 MARKETPLACE_CSV_URL = os.environ.get("MARKETPLACE_CSV_URL", "")
+
+# Known purchasable agents — buyer wallet (0x390bd…) is confirmed subscribed to these plans.
+# These produce REAL Nevermined x402 transactions when called.
+KNOWN_PURCHASABLE = [
+    {
+        "team_name": "Full Stack Agents",
+        "description": "AbilityAI Nexus hub — multi-agent orchestration, business strategy, and AI workflows",
+        "endpoint_url": "https://us14.abilityai.dev/api/paid/nexus/chat",
+        "plan_id": "62132339823439076950399695238634927378738244877172775303591114485168828025410",
+        "agent_id": "38193170898726307123033205989462035601957241449542699022794362936331517059909",
+        "price_credits": "free",
+        "category": "AI,orchestration",
+    },
+    {
+        "team_name": "Mog Markets",
+        "description": "Nevermined hackathon guide agent — finds and queries marketplace services",
+        "endpoint_url": "https://beneficial-essence-production-99c7.up.railway.app/mcp",
+        "plan_id": "80210700025910908916740431903389992758624785780559991487167394553102643149649",
+        "agent_id": "82912941131551845997559074870195234642138086895845726794338119104469804827506",
+        "price_credits": "free",
+        "category": "marketplace,search",
+    },
+    {
+        "team_name": "Mog Markets",
+        "description": "Mog Markets Gateway — API marketplace find_service and buy_and_call in one step",
+        "endpoint_url": "https://beneficial-essence-production-99c7.up.railway.app/mcp",
+        "plan_id": "9661082042009636068072391467054896427087238025772062250717418964278633341785",
+        "agent_id": "48640872261251869030033108052183526690631027622085978188430169084356856647939",
+        "price_credits": "free",
+        "category": "marketplace,api",
+    },
+]
 
 MAX_DAILY_SPEND = int(os.environ.get("MAX_DAILY_SPEND", "100"))
 MAX_PER_REQUEST = int(os.environ.get("MAX_PER_REQUEST", "10"))

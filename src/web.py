@@ -83,6 +83,23 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 .score-bar-fill.mid { background: var(--orange); }
 .score-bar-fill.low { background: var(--red); }
 
+.zc-ad-card {
+  border: 1px solid #1a3a1a; border-radius: 6px;
+  padding: 12px 14px; margin-top: 8px; font-size: 12px;
+  background: #050f05;
+}
+.zc-ad-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.zc-ad-label { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--green); }
+.zc-ad-score-badge { font-size: 9px; color: var(--dim); }
+.zc-ad-title { font-weight: 500; font-size: 13px; margin-bottom: 6px; line-height: 1.4; }
+.zc-ad-msg { color: var(--dim); font-size: 11px; line-height: 1.5; margin-bottom: 10px; }
+.zc-ad-cta {
+  display: inline-block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  background: #0a1e0a; border: 1px solid #1a3a1a; color: var(--green);
+  padding: 4px 10px; border-radius: 3px; text-decoration: none; font-family: inherit; cursor: pointer;
+}
+.zc-ad-cta:hover { background: #142814; }
+
 .chat-input-area {
   padding: 16px 24px; border-top: 1px solid var(--border);
   display: flex; gap: 10px; align-items: center;
@@ -145,6 +162,26 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 
 .empty { color: var(--dim2); font-size: 11px; padding: 8px 0; }
 
+/* ---- Live orchestration grid (TrinityOS-style) ---- */
+.orch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.agent-box {
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 8px 10px; font-size: 10px; position: relative;
+  transition: border-color 0.3s;
+}
+.agent-box.running { border-color: var(--orange); }
+.agent-box.done    { border-color: var(--green); }
+.agent-box.failed  { border-color: var(--red); }
+.agent-box.idle    { border-color: var(--border); }
+.agent-box-name { font-weight: 500; color: var(--fg); margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-box-status { color: var(--dim); font-size: 9px; letter-spacing: 0.06em; }
+.agent-box-score { position: absolute; top: 7px; right: 8px; font-size: 11px; font-weight: 300; }
+.agent-pulse { width: 5px; height: 5px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
+.agent-pulse.running { background: var(--orange); animation: pulse 1s infinite; }
+.agent-pulse.done    { background: var(--green); }
+.agent-pulse.failed  { background: var(--red); }
+.agent-pulse.idle    { background: var(--dim2); }
+
 .welcome { color: var(--dim); font-size: 12px; line-height: 1.8; padding: 40px 0; }
 .welcome strong { color: var(--fg); font-weight: 500; }
 </style>
@@ -154,15 +191,16 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
   <header>
     <h1>AgentAudit</h1>
     <div class="header-right">
-      <div class="svc-status"><span class="dot" id="dot-seller"></span><span id="st-seller">seller</span></div>
-      <div class="svc-status"><span class="dot" id="dot-buyer"></span><span id="st-buyer">buyer</span></div>
+      <div class="svc-status" title="Seller endpoint status"><span class="dot" id="dot-seller"></span><span id="st-seller">seller</span></div>
+      <div class="svc-status" title="Buyer agent status"><span class="dot" id="dot-buyer"></span><span id="st-buyer">buyer</span></div>
       <div style="width:1px;height:16px;background:var(--border);margin:0 4px"></div>
-      <div class="svc-status" title="OpenAI GPT-4o-mini — quality scoring"><span class="dot" id="dot-openai"></span><span style="font-size:10px">openai</span><span id="tool-openai-count" style="font-size:9px;color:var(--dim);margin-left:2px">0</span></div>
-      <div class="svc-status" title="Exa — web crawl &amp; ground-truth scoring"><span class="dot" id="dot-exa"></span><span style="font-size:10px">exa</span><span id="tool-exa-count" style="font-size:9px;color:var(--dim);margin-left:2px">0</span></div>
-      <div class="svc-status" title="Nevermined x402 — payment layer"><span class="dot" id="dot-nvm"></span><span style="font-size:10px">nvm</span><span id="tool-nvm-count" style="font-size:9px;color:var(--dim);margin-left:2px">0</span></div>
-      <div class="svc-status" title="ZeroClick — native ads (pending approval)"><span class="dot" id="dot-zc"></span><span style="font-size:10px">zeroclick</span></div>
+      <div class="svc-status" id="tool-openai-wrap" title="OpenAI GPT-4o-mini — quality scoring LLM"><span class="dot" id="dot-openai"></span><span style="font-size:10px">OpenAI</span><span id="tool-openai-count" style="font-size:9px;color:var(--dim);margin-left:3px;display:none"></span></div>
+      <div class="svc-status" id="tool-exa-wrap" title="Exa — web crawl and ground-truth scoring"><span class="dot" id="dot-exa"></span><span style="font-size:10px">Exa</span><span id="tool-exa-count" style="font-size:9px;color:var(--dim);margin-left:3px;display:none"></span></div>
+      <div class="svc-status" id="tool-nvm-wrap" title="Nevermined x402 — payment infrastructure"><span class="dot" id="dot-nvm"></span><span style="font-size:10px">Nevermined</span><span id="tool-nvm-count" style="font-size:9px;color:var(--dim);margin-left:3px;display:none"></span></div>
+      <div class="svc-status" id="tool-zc-wrap" title="ZeroClick native ads — live"><span class="dot" id="dot-zc"></span><span style="font-size:10px">ZeroClick</span><span id="tool-zc-status" style="font-size:9px;color:var(--green);margin-left:3px">live</span></div>
+      <div class="svc-status" id="tool-apify-wrap" title="Apify Store — web scrapers and AI actors marketplace"><span class="dot up" id="dot-apify"></span><span style="font-size:10px">Apify</span><span id="tool-apify-count" style="font-size:9px;color:var(--dim);margin-left:3px;display:none"></span></div>
       <div style="width:1px;height:16px;background:var(--border);margin:0 4px"></div>
-      <button id="run-now-btn" style="font-size:10px;font-family:inherit;background:transparent;border:1px solid var(--dim2);color:var(--dim);padding:3px 8px;border-radius:3px;cursor:pointer;letter-spacing:0.05em" onclick="triggerBuyerLoop()">run buyer</button>
+      <button id="run-now-btn" style="font-size:10px;font-family:inherit;background:transparent;border:1px solid var(--dim2);color:var(--dim);padding:3px 8px;border-radius:3px;cursor:pointer;letter-spacing:0.05em" title="Manually trigger the autonomous buyer loop" onclick="triggerBuyerLoop()">run loop</button>
     </div>
   </header>
 
@@ -186,40 +224,44 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
   </div>
 
   <div class="stats-panel">
-    <div class="section-label">Seller</div>
-    <div class="metric">
-      <div class="metric-value" id="rev">0</div>
-      <div class="metric-label">credits earned</div>
+
+    <div class="section-label">Live Orchestration <span style="font-size:9px;color:var(--dim)">· agents running now</span></div>
+    <div class="orch-grid" id="orch-grid">
+      <div class="agent-box idle" id="orch-exa"        style="grid-column:1"><div class="agent-box-name">Exa Research</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-apify"       style="grid-column:2"><div class="agent-box-name">Apify Store</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-openai"      style="grid-column:1"><div class="agent-box-name">OpenAI Audit</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-nevermined"  style="grid-column:2"><div class="agent-box-name">Nevermined x402</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-trinity"     style="grid-column:1"><div class="agent-box-name" style="color:var(--green)">▲ AbilityAI Trinity</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-mog"         style="grid-column:2"><div class="agent-box-name">Mog Markets</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
     </div>
-    <div class="stat-row"><span class="stat-key">audits</span><span class="stat-val" id="a">0</span></div>
-    <div class="stat-row"><span class="stat-key">comparisons</span><span class="stat-val" id="c">0</span></div>
-    <div class="stat-row"><span class="stat-key">monitors</span><span class="stat-val" id="m">0</span></div>
-    <div class="stat-row"><span class="stat-key">unique buyers</span><span class="stat-val" id="ub">0</span></div>
     <div class="divider"></div>
 
-    <div class="section-label">Transactions</div>
-    <div id="txs"><div class="empty">none yet</div></div>
-    <div class="divider"></div>
-
-    <div class="section-label">Buyer · Business Intelligence</div>
-    <div class="stat-row"><span class="stat-key">purchases</span><span class="stat-val" id="ts">0</span></div>
+    <div class="section-label">Buyer <span style="font-size:9px;color:var(--dim);letter-spacing:0">· outgoing purchases</span></div>
+    <div class="stat-row"><span class="stat-key">purchased</span><span class="stat-val" id="ts">0</span></div>
     <div class="stat-row"><span class="stat-key">credits spent</span><span class="stat-val" id="ds">0</span></div>
     <div class="stat-row"><span class="stat-key">nvm balance</span><span class="stat-val" id="nvm-balance">&mdash;</span></div>
-    <div class="stat-row"><span class="stat-key">daily limit</span><span class="stat-val" id="dl">&mdash;</span></div>
-    <div class="stat-row"><span class="stat-key">remaining</span><span class="stat-val" id="dr">&mdash;</span></div>
+    <div id="txs-buyer" style="margin-top:6px"><div class="empty">no purchases yet</div></div>
+    <div class="divider"></div>
+
+    <div class="section-label">Transactions <span style="font-size:9px;color:var(--dim);letter-spacing:0">· verified on-chain</span></div>
+    <div id="txs"><div class="empty">none yet</div></div>
     <div class="divider"></div>
 
     <div class="section-label">ROI Decisions</div>
     <div id="roi" style="padding:4px 0;font-size:11px"><span style="color:var(--dim)">none yet</span></div>
     <div class="divider"></div>
 
-    <div class="section-label">ZeroClick Ads</div>
+    <div class="section-label">ZeroClick <span style="font-size:9px;color:var(--green);letter-spacing:0">● live</span></div>
+    <div id="zc-live-ad" style="display:none;border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin-bottom:8px;background:rgba(0,255,100,0.03)">
+      <div style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--dim);margin-bottom:5px">◉ ZeroClick Sponsored</div>
+      <div id="zc-ad-title" style="font-size:12px;font-weight:bold;margin-bottom:4px"></div>
+      <div id="zc-ad-msg" style="font-size:11px;color:var(--dim);line-height:1.5;margin-bottom:8px"></div>
+      <a id="zc-ad-cta" href="#" target="_blank" rel="noopener" style="font-size:10px;color:var(--green);text-decoration:none;letter-spacing:0.05em" onclick="trackZcClick(this)"></a>
+    </div>
     <div class="stat-row"><span class="stat-key">ads served</span><span class="stat-val" id="zc-served">0</span></div>
     <div class="stat-row"><span class="stat-key">impressions</span><span class="stat-val" id="zc-imp">0</span></div>
     <div class="stat-row"><span class="stat-key">conversions</span><span class="stat-val" id="zc-conv">0</span></div>
-    <div class="stat-row"><span class="stat-key">conversion rate</span><span class="stat-val" id="zc-rate">—</span></div>
     <div class="stat-row"><span class="stat-key">revenue driven</span><span class="stat-val" id="zc-rev">0</span></div>
-    <div id="zc-feed" style="margin-top:8px;font-size:10px;line-height:1.7"><span style="color:var(--dim2)">no ads yet</span></div>
     <div class="divider"></div>
 
     <div class="section-label">Vendors</div>
@@ -280,55 +322,62 @@ function toolLabel(name, args) {
   switch(name) {
     case 'execute_business_strategy':
       return {
-        icon: '⚙',
+        icon: '[strategy]',
         label: 'Autonomous business strategy',
         detail: args.goal ? 'goal: ' + args.goal.substring(0, 60) : '',
-        sub: 'Exa research → marketplace search → audit top picks → Nevermined purchase → synthesize'
+        sub: 'Exa research -> marketplace search -> audit top picks -> Nevermined purchase -> synthesize'
       };
     case 'search_marketplace':
       return {
-        icon: '🔍',
+        icon: '[search]',
         label: 'Nevermined Discovery API',
         detail: args.query ? 'query: "' + args.query + '"' : 'fetching all sellers',
         sub: 'GET nevermined.ai/hackathon/register/api/discover'
       };
     case 'analyze_url':
       return {
-        icon: '🕷',
+        icon: '[crawl]',
         label: 'Exa web crawl',
         detail: args.url ? args.url.substring(0, 60) : '',
         sub: 'POST api.exa.ai/contents + /search'
       };
     case 'audit_service':
       return {
-        icon: '🔬',
+        icon: '[audit]',
         label: 'Quality audit — OpenAI + Exa',
         detail: args.endpoint_url ? args.endpoint_url.substring(0, 55) : '',
         sub: 'latency probe · GPT-4o-mini quality score · Exa ground truth'
       };
     case 'compare_services':
       return {
-        icon: '⚖',
+        icon: '[compare]',
         label: 'Side-by-side comparison',
         detail: '',
         sub: (args.endpoint_url_1||'').substring(0,30) + ' vs ' + (args.endpoint_url_2||'').substring(0,30)
       };
     case 'buy_service':
       return {
-        icon: '💳',
+        icon: '[buy]',
         label: 'Nevermined x402 purchase',
-        detail: args.endpoint_url ? args.endpoint_url.substring(0, 55) : '',
-        sub: 'x402 JWT token → payment-signature header → 1 credit deducted'
+        detail: args.endpoint_url ? args.endpoint_url.replace(/https?:[/][/]/,'').substring(0, 50) : '',
+        sub: 'Step 1: probe → 402 + plan_id  ·  Step 2: subscribe  ·  Step 3: token  ·  Step 4: pay'
+      };
+    case 'search_apify':
+      return {
+        icon: '[apify]',
+        label: 'Apify Store marketplace search',
+        detail: args.query ? 'query: "' + args.query + '"' : '',
+        sub: 'apify.com/store — AI actors, scrapers, web agents'
       };
     case 'query_onchain':
       return {
-        icon: '⛓',
+        icon: '[chain]',
         label: 'On-chain subgraph — Base Sepolia',
         detail: args.data_type || '',
         sub: 'Nevermined ERC-1155 credit contract'
       };
     default:
-      return { icon: '◉', label: name, detail: '', sub: '' };
+      return { icon: '[tool]', label: name, detail: '', sub: '' };
   }
 }
 
@@ -340,11 +389,11 @@ function addToolUse(name, args) {
   d.innerHTML =
     '<div style="display:flex;align-items:flex-start;gap:6px">' +
       '<span class="tool-dot"></span>' +
-      '<div>' +
+      '<div style="flex:1">' +
         '<div><span style="color:var(--fg);font-weight:500">' + t.icon + ' ' + t.label + '</span>' +
           (t.detail ? '<span style="color:var(--dim);margin-left:6px">' + escHtml(t.detail) + '</span>' : '') +
         '</div>' +
-        (t.sub ? '<div style="color:var(--dim2);font-size:10px;margin-top:1px">' + escHtml(t.sub) + '</div>' : '') +
+        (t.sub ? '<div class="tool-sub" style="color:var(--dim2);font-size:10px;margin-top:1px">' + escHtml(t.sub) + '</div>' : '<div class="tool-sub" style="display:none"></div>') +
       '</div>' +
     '</div>';
   msgs.appendChild(d);
@@ -352,9 +401,28 @@ function addToolUse(name, args) {
   return d.id;
 }
 
-function markToolDone(toolElId) {
+function markToolDone(toolElId, result) {
   const el = document.getElementById(toolElId);
-  if (el) { const dot = el.querySelector('.tool-dot'); if (dot) dot.classList.add('done'); }
+  if (!el) return;
+  const dot = el.querySelector('.tool-dot');
+  if (dot) dot.classList.add('done');
+  // If it's a buy_service result, update sub text with outcome
+  if (result && typeof result === 'object' && 'purchased' in result) {
+    const subEl = el.querySelector('.tool-sub');
+    if (subEl) {
+      if (result.purchased) {
+        subEl.innerHTML = '<span style="color:var(--green)">✓ purchased — 1 credit deducted via Nevermined x402</span>';
+      } else if (result.status === 402) {
+        subEl.innerHTML = '<span style="color:var(--orange)">needs plan purchase — <a href="' + (result.purchase_url||'https://nevermined.app') + '" target="_blank" style="color:var(--orange)">buy plan →</a></span>';
+      } else if (result.status >= 500) {
+        subEl.innerHTML = '<span style="color:var(--red)">vendor offline (' + result.status + ') — tried with retry</span>';
+      } else if (result.called) {
+        subEl.innerHTML = '<span style="color:var(--dim)">responded (no payment required)</span>';
+      } else {
+        subEl.innerHTML = '<span style="color:var(--red)">failed: ' + escHtml((result.error||'unknown').substring(0,60)) + '</span>';
+      }
+    }
+  }
 }
 
 function scoreBarCls(v) { return v >= 0.7 ? 'high' : v >= 0.45 ? 'mid' : 'low'; }
@@ -375,7 +443,107 @@ function renderAuditCard(data) {
   }
   if (data.reasoning) html += '<div style="margin-top:8px;color:var(--dim);font-size:11px;line-height:1.5">' + escHtml(data.reasoning) + '</div>';
   html += '</div>';
+  // Append ZeroClick ad if the audit result includes one
+  if (data.ad) html += renderAdCard(data.ad, score);
   return html;
+}
+
+function renderAdCard(ad, score) {
+  if (!ad) return '';
+  const sponsor = ad.sponsor || 'ZeroClick.ai';
+  const title = ad.title || sponsor;
+  const msg = (ad.message || '').substring(0, 180);
+  const cta = ad.cta || 'Learn more';
+  const url = ad.click_url || 'https://zeroclick.ai';
+  const scoreStr = score && score > 0 ? ' · ' + (score * 100).toFixed(0) + '% audit score' : '';
+  let html = '<div class="zc-ad-card">';
+  html += '<div class="zc-ad-header">';
+  html += '<span class="zc-ad-label">◉ ZeroClick Sponsored</span>';
+  html += '<span class="zc-ad-score-badge">' + escHtml(sponsor) + scoreStr + '</span>';
+  html += '</div>';
+  html += '<div class="zc-ad-title">' + escHtml(title) + '</div>';
+  if (msg) html += '<div class="zc-ad-msg">' + escHtml(msg) + '</div>';
+  html += '<a class="zc-ad-cta" href="' + escHtml(url) + '" target="_blank" rel="noopener">' + escHtml(cta) + ' →</a>';
+  html += '</div>';
+  return html;
+}
+
+// ── Live Orchestration Panel (TrinityOS-style) ──────────────────────────────
+// renderOrchestration: update the 4 permanent tool boxes with final results
+function renderOrchestration(data) {
+  if (!data) return;
+
+  // Count apify actors found
+  const nApify = (data.apify_actors || []).length;
+  orchSetAgent('exa',        'done',    'research done');
+  orchSetAgent('apify',      'done',    nApify + ' actors');
+
+  const nAudited = (data.audit_scores || []).filter(s => !s.error).length;
+  orchSetAgent('openai', nAudited > 0 ? 'done' : 'idle', nAudited + ' audited');
+
+  const purchases = data.purchases || data.agents || [];
+  const nBought = purchases.filter(p => p.purchased).length;
+  const nFailed = purchases.filter(p => !p.purchased && !p.skipped).length;
+  orchSetAgent('nevermined', nBought > 0 ? 'done' : (nFailed > 0 ? 'failed' : 'idle'), nBought + ' bought');
+
+  // Update Trinity + Mog Markets boxes based on which vendors were purchased
+  const trinityPurchase = purchases.find(p => (p.endpoint||p.team||'').includes('abilityai'));
+  const mogPurchase     = purchases.find(p => (p.endpoint||p.team||'').includes('railway') || (p.endpoint||p.team||'').toLowerCase().includes('mog'));
+  orchSetAgent('trinity', trinityPurchase ? (trinityPurchase.purchased ? 'done' : 'failed') : 'idle',
+               trinityPurchase ? (trinityPurchase.purchased ? 'purchased ✓' : 'failed') : 'standby');
+  orchSetAgent('mog',     mogPurchase     ? (mogPurchase.purchased     ? 'done' : 'failed') : 'idle',
+               mogPurchase     ? (mogPurchase.purchased     ? 'purchased ✓' : 'failed') : 'standby');
+
+  // Update buyer purchase list with team labels
+  const txBuyer = document.getElementById('txs-buyer');
+  if (txBuyer && purchases.length > 0) {
+    const bought = purchases.filter(p => p.purchased || p.called);
+    if (bought.length > 0) {
+      const items = bought.map(p => {
+        const rawVendor = (p.endpoint || p.team || '');
+        const isTrinity = rawVendor.includes('abilityai.dev');
+        const isMog = rawVendor.includes('railway.app') || rawVendor.includes('mog');
+        const label = isTrinity ? 'AbilityAI Trinity' : (isMog ? 'Mog Markets' : rawVendor.replace(/https?:[/][/]/,'').substring(0,20));
+        const col = p.purchased ? 'var(--green)' : 'var(--orange)';
+        const badge = isTrinity ? '<span style="font-size:9px;color:var(--green);margin-left:4px">▲ Trinity</span>' : '';
+        return '<div class="tx-item"><div class="tx-top"><span class="tx-endpoint">' + escHtml(label) + badge + '</span>' +
+          '<span class="tx-credits" style="color:'+col+'">' + (p.purchased ? '-1 cr' : 'open') + '</span></div>' +
+          '<div class="tx-meta">' + (p.purchased ? 'nvm x402' : 'no payment') + ' · ' + new Date().toLocaleTimeString() + '</div></div>';
+      });
+      txBuyer.innerHTML = items.join('');
+    }
+  }
+}
+
+const ORCH_IDS = {exa:'orch-exa', apify:'orch-apify', openai:'orch-openai', nevermined:'orch-nevermined', trinity:'orch-trinity', mog:'orch-mog'};
+
+function orchSetAgent(id, status, msg) {
+  const boxId = ORCH_IDS[id] || ('orch-agent-' + id);
+  let box = document.getElementById(boxId);
+  if (!box) return;
+  box.className = 'agent-box ' + status;
+  const nameEl = box.querySelector('.agent-box-name');
+  const stEl   = box.querySelector('.agent-box-status');
+  if (stEl) stEl.innerHTML = '<span class="agent-pulse ' + status + '"></span>' + escHtml((msg||'').substring(0,22));
+  // score styling on done
+  const scoreEl = box.querySelector('.agent-box-score');
+  if (scoreEl && status === 'done') scoreEl.style.color = 'var(--green)';
+  if (scoreEl && status === 'failed') scoreEl.style.color = 'var(--red)';
+}
+
+function orchSetRunning() {
+  ['exa','apify','openai','nevermined','trinity','mog'].forEach(id => {
+    orchSetAgent(id, 'idle', 'queued...');
+  });
+}
+
+// Map endpoint URLs to orchestration box IDs for live updates
+function orchIdFromEndpoint(ep) {
+  if (!ep) return null;
+  if (ep.includes('abilityai')) return 'trinity';
+  if (ep.includes('railway.app') || ep.toLowerCase().includes('mog')) return 'mog';
+  if (ep.includes('exa') || ep.includes('ai.exa')) return 'exa';
+  return 'nevermined';
 }
 
 function renderStrategyCard(data) {
@@ -444,6 +612,8 @@ function renderStrategyCard(data) {
   }
 
   html += '</div>';
+  // Append ZeroClick sponsored ad if the strategy result includes one
+  if (data.zeroclick_ad) html += renderAdCard(data.zeroclick_ad, roi.top_score || 0);
   return html;
 }
 
@@ -504,26 +674,86 @@ async function sendMessage() {
             if (eventType === 'tool_use') {
               if (lastToolId) markToolDone(lastToolId);
               lastToolId = addToolUse(d.tool, d.args || {});
-              lastStepEl = null; // reset step tracker for new tool
+              lastStepEl = null;
+              // Orchestration grid updates
+              if (d.tool === 'execute_business_strategy' || d.tool === 'parallel_agents') {
+                orchSetRunning();
+              } else if (d.tool === 'buy_service') {
+                // Highlight the relevant orch box when a direct purchase fires
+                const orchId = orchIdFromEndpoint((d.args||{}).endpoint_url || '');
+                if (orchId) orchSetAgent(orchId, 'running', 'purchasing…');
+                orchSetAgent('nevermined', 'running', 'x402 flow…');
+              } else if (d.tool === 'search_marketplace') {
+                orchSetAgent('exa', 'running', 'searching…');
+              }
             }
             else if (eventType === 'tool_step') {
-              // Show live sub-step inside the active tool element
-              const el = lastToolId ? document.getElementById(lastToolId) : null;
-              if (el) {
-                if (!el.stepList) {
-                  const sl = document.createElement('div');
-                  sl.style.cssText = 'margin-top:4px;padding-left:16px;font-size:10px;color:var(--dim2);line-height:1.6';
-                  el.appendChild(sl);
-                  el.stepList = sl;
+              if (d.agent_init) {
+                d.agent_init.forEach(a => orchSetAgent(a.id, 'idle', 'queued'));
+              } else if (d.agent) {
+                orchSetAgent(d.agent, d.status || 'running', d.msg || d.status);
+              } else if (d.message) {
+                const el = lastToolId ? document.getElementById(lastToolId) : null;
+                if (el) {
+                  if (!el.stepList) {
+                    const sl = document.createElement('div');
+                    sl.style.cssText = 'margin-top:4px;padding-left:16px;font-size:10px;color:var(--dim2);line-height:1.6';
+                    el.appendChild(sl);
+                    el.stepList = sl;
+                  }
+                  el.stepList.innerHTML += '<div>- ' + escHtml(d.message) + '</div>';
                 }
-                el.stepList.innerHTML += '<div>↳ ' + escHtml(d.message || '') + '</div>';
               }
               scrollDown();
             }
+            else if (eventType === 'zeroclick_ad') {
+              const adHtml = renderAdCard(d.ad, d.audit_score);
+              if (adHtml) auditCards += adHtml;
+              const ad = d.ad;
+              if (ad) {
+                document.getElementById('zc-live-ad').style.display = 'block';
+                document.getElementById('zc-ad-title').textContent = ad.title || ad.sponsor || 'ZeroClick';
+                document.getElementById('zc-ad-msg').textContent = (ad.message || '').substring(0, 120);
+                const cta = document.getElementById('zc-ad-cta');
+                cta.textContent = (ad.cta || 'Learn more') + ' →';
+                cta.href = ad.click_url || 'https://zeroclick.ai';
+                cta.dataset.offerId = ad.id || '';
+              }
+              refreshStats();
+            }
             else if (eventType === 'tool_result') {
-              if (lastToolId) markToolDone(lastToolId);
-              lastToolId = null;
               const r = d.result;
+              // Pass result to markToolDone so buy cards show outcome
+              if (lastToolId) markToolDone(lastToolId, r && typeof r === 'object' ? r : null);
+              // For individual buy_service: update orch boxes + txs list
+              if (d.tool === 'buy_service' && r && typeof r === 'object') {
+                const orchId = orchIdFromEndpoint(r.endpoint || r.target || '');
+                if (orchId) orchSetAgent(orchId, r.purchased ? 'done' : 'failed', r.purchased ? 'purchased ✓' : (r.status||'fail'));
+                orchSetAgent('nevermined', r.purchased ? 'done' : (r.status === 402 ? 'idle' : 'failed'), r.purchased ? (r.purchased > 0 ? '1 bought' : 'open') : (r.status||'fail'));
+                // Update transactions sidebar
+                if (r.purchased || r.called) {
+                  const txBuyer = document.getElementById('txs-buyer');
+                  if (txBuyer) {
+                    const prev = txBuyer.querySelector('.empty');
+                    if (prev) prev.remove();
+                    const item = document.createElement('div');
+                    item.className = 'tx-item';
+                    const ep = r.endpoint || r.target || '';
+                    const label = ep.replace(/https?:[/][/]/,'').substring(0, 30);
+                    const col = r.purchased ? 'var(--green)' : 'var(--orange)';
+                    const badge = r.purchased ? '-1 cr' : 'open';
+                    item.innerHTML = '<div class="tx-top"><span class="tx-endpoint">' + escHtml(label) + '</span><span class="tx-credits" style="color:'+col+'">' + badge + '</span></div>' +
+                      '<div class="tx-meta">' + (r.payment_method||'attempted') + ' · ' + new Date().toLocaleTimeString() + '</div>';
+                    txBuyer.insertBefore(item, txBuyer.firstChild);
+                  }
+                }
+              }
+              // Also search_marketplace: update exa orch box
+              if (d.tool === 'search_marketplace') {
+                const n = Array.isArray(r) ? r.length : (r && r.results ? r.results.length : 0);
+                orchSetAgent('exa', 'done', (n||'?') + ' sellers found');
+              }
+              lastToolId = null;
               if (r && typeof r === 'object' && r.overall_score !== undefined) {
                 auditCards += renderAuditCard(r);
               }
@@ -534,9 +764,30 @@ async function sendMessage() {
                   auditCards += '<div style="margin-top:8px;font-size:12px;color:var(--dim)">' + escHtml(r.recommendation) + '</div>';
                 }
               }
-              // Business strategy result card
+              // Business strategy result card + live orchestration update
               if (r && typeof r === 'object' && r.goal && r.steps) {
                 auditCards += renderStrategyCard(r);
+                renderOrchestration(r);
+                // Show ZeroClick ad from strategy if present
+                if (r.zeroclick_ad) {
+                  const adHtml = renderAdCard(r.zeroclick_ad, r.roi_analysis && r.roi_analysis.top_score || 0);
+                  if (adHtml) auditCards += adHtml;
+                  const ad = r.zeroclick_ad;
+                  document.getElementById('zc-live-ad').style.display = 'block';
+                  document.getElementById('zc-ad-title').textContent = ad.title || ad.sponsor || 'ZeroClick';
+                  document.getElementById('zc-ad-msg').textContent = (ad.message || '').substring(0, 120);
+                  const cta = document.getElementById('zc-ad-cta');
+                  cta.textContent = (ad.cta || 'Learn more') + ' →';
+                  cta.href = ad.click_url || 'https://zeroclick.ai';
+                  cta.dataset.offerId = ad.id || '';
+                }
+              }
+              // Parallel agents result
+              if (r && typeof r === 'object' && r.orchestration === 'parallel') {
+                renderOrchestration(r);
+                if (r.synthesis) {
+                  auditCards += '<div style="border:1px solid var(--border);border-radius:6px;padding:12px 14px;margin-top:8px;font-size:12px"><div style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);margin-bottom:8px">Synthesis — ' + (r.agents || []).length + ' agents</div>' + escHtml(r.synthesis) + '</div>';
+                }
               }
             }
             else if (eventType === 'token') {
@@ -570,6 +821,11 @@ async function sendMessage() {
 input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
 btn.addEventListener('click', sendMessage);
 
+function trackZcClick(el) {
+  const offerId = el.dataset.offerId;
+  if (offerId) fetch(S + '/zeroclick/click?offer_id=' + encodeURIComponent(offerId), {method:'POST'}).catch(()=>{});
+}
+
 async function refreshStats() {
   const [stats, b, credits] = await Promise.all([get(S+'/stats'), get(B+'/api/status'), get(S+'/credits')]);
   const s = stats ? stats.seller : null;
@@ -593,21 +849,43 @@ async function refreshStats() {
 
   // Sponsor tool indicators
   const tools = stats ? (stats.tools || {}) : {};
-  const toolDotMap = {openai:'dot-openai', exa:'dot-exa', nevermined:'dot-nvm', zeroclick:'dot-zc'};
-  const toolCountMap = {openai:'tool-openai-count', exa:'tool-exa-count', nevermined:'tool-nvm-count'};
+  const toolDotMap = {openai:'dot-openai', exa:'dot-exa', nevermined:'dot-nvm', zeroclick:'dot-zc', apify:'dot-apify'};
+  const toolCountMap = {openai:'tool-openai-count', exa:'tool-exa-count', nevermined:'tool-nvm-count', apify:'tool-apify-count'};
   Object.entries(toolDotMap).forEach(([t, dotId]) => {
     const info = tools[t] || {};
     const st = info.status || 'unknown';
     const dot = document.getElementById(dotId);
     if (dot) {
       dot.className = 'dot';
-      if (st === 'active') dot.classList.add('green');
-      else if (st === 'error') dot.classList.add('red');
-      else dot.classList.add('orange'); // pending_approval / unknown
+      if (st === 'active' || st === 'ok') dot.classList.add('up');
+      else if (st === 'error') dot.classList.add('down');
+      // pending/unknown stays grey
     }
-    const countEl = document.getElementById(toolCountMap[t]);
-    if (countEl && info.calls > 0) countEl.textContent = info.calls;
+    const countId = toolCountMap[t];
+    if (countId) {
+      const countEl = document.getElementById(countId);
+      if (countEl) {
+        if (info.calls > 0) {
+          countEl.textContent = info.calls + 'x';
+          countEl.style.display = '';
+        } else {
+          countEl.style.display = 'none';
+        }
+      }
+    }
   });
+  // ZeroClick: show live/pending status text
+  const zcInfo = tools['zeroclick'] || {};
+  const zcStatusEl = document.getElementById('tool-zc-status');
+  if (zcStatusEl) {
+    if (zcInfo.status === 'active' || zcInfo.status === 'ok') {
+      zcStatusEl.textContent = zcInfo.calls > 0 ? zcInfo.calls + 'x' : 'live';
+      zcStatusEl.style.color = 'var(--green)';
+    } else {
+      zcStatusEl.textContent = 'pending approval';
+      zcStatusEl.style.color = 'var(--orange)';
+    }
+  }
 
   // ZeroClick — data lives in /stats (seller analytics module)
   const zc = stats ? stats.zeroclick : null;
@@ -646,47 +924,52 @@ async function refreshStats() {
       : '<div class="empty">none yet</div>';
   }
 
-  // Buyer side (from unified stats)
-  if (by) {
-    document.getElementById('dl').textContent = b ? (b.budget || {}).daily_limit || '\\u2014' : '\\u2014';
-    document.getElementById('ds').textContent = by.total_spent_credits || 0;
-    document.getElementById('dr').textContent = b ? ((b.budget || {}).daily_remaining != null ? (b.budget || {}).daily_remaining : '\\u2014') : '\\u2014';
-    document.getElementById('ts').textContent = by.total_purchases || 0;
-    document.getElementById('ep').textContent = b ? (b.services_tracked || 0) : 0;
-    document.getElementById('ar').textContent = b ? (b.audit_history_count || 0) : 0;
+  // Buyer side
+  const buyerData = by || (b ? b : null);
+  if (buyerData) {
+    document.getElementById('ds').textContent = buyerData.total_spent_credits || (b && b.budget ? b.budget.daily_spent : 0) || 0;
+    document.getElementById('ts').textContent = buyerData.total_purchases || 0;
+
+    // Buyer purchase history feed
+    const ph = (by && by.purchase_history) || [];
+    const txBuyer = document.getElementById('txs-buyer');
+    if (txBuyer && ph.length > 0) {
+      txBuyer.innerHTML = ph.slice(-5).reverse().map(p => {
+        const ok = p.payment_method === 'nevermined_x402';
+        const col = ok ? 'var(--green)' : 'var(--orange)';
+        return '<div class="tx-item"><div class="tx-top"><span class="tx-endpoint">' + escHtml((p.vendor||'').substring(0,22)) + '</span><span class="tx-credits" style="color:'+col+'">-' + (p.credits||1) + ' cr</span></div>' +
+          '<div class="tx-meta">' + (ok ? 'nvm x402' : 'local') + ' · ' + (p.score ? p.score.toFixed(2) : '') + ' · ' + new Date(p.timestamp||Date.now()).toLocaleTimeString() + '</div></div>';
+      }).join('');
+    }
 
     // ROI decisions
-    const roi = by.roi_decisions || {};
-    const roiTotal = Object.values(roi).reduce((a,b) => a+b, 0) || 1;
+    const roi = (by && by.roi_decisions) || {};
     const roiEl = document.getElementById('roi');
     if (roiEl) {
       roiEl.innerHTML = Object.entries(roi).filter(([,v])=>v>0).map(([k,v]) => {
-        const cls = k==='BUY' ? 'var(--green)' : k==='AVOID' ? 'var(--red)' : 'var(--orange)';
+        const cls = k==='BUY'||k==='STRONG_BUY' ? 'var(--green)' : k==='AVOID' ? 'var(--red)' : 'var(--orange)';
         return '<span style="color:'+cls+';margin-right:8px">'+k+' '+v+'</span>';
       }).join('') || '<span style="color:var(--dim)">none yet</span>';
     }
 
-    // Vendors bought from
-    const vendors = by.vendors || [];
-    const vbs = document.getElementById('vbs');
-    if (vbs) {
-      const ph = by.purchase_history || [];
-      const vendorCounts = {};
-      ph.forEach(p => { vendorCounts[p.vendor] = (vendorCounts[p.vendor] || 0) + 1; });
-      const entries = Object.entries(vendorCounts);
-      const mx = Math.max(...entries.map(([,n]) => n), 1);
-      vbs.innerHTML = entries.length
-        ? entries.map(([n, a]) => '<div class="vendor-row"><div class="vendor-name">' + n.substring(0,22) + '</div><div class="vendor-bar"><div class="vendor-fill" style="width:' + (a/mx)*100 + '%"></div></div><div class="vendor-amt">' + a + '</div></div>').join('')
-        : '<div class="empty">no vendors</div>';
+    // Coverage
+    const epEl = document.getElementById('ep'); if (epEl) epEl.textContent = b ? (b.services_tracked || 0) : 0;
+    const arEl = document.getElementById('ar'); if (arEl) arEl.textContent = b ? (b.audit_history_count || 0) : 0;
+  }
+
+  // Seller section — compact
+  if (s) {
+    document.getElementById('rev').textContent = s.credits_earned || 0;
+    const sa = document.getElementById('seller-activity');
+    if (sa) {
+      const parts = [];
+      if (s.audits > 0)      parts.push('audits: ' + s.audits);
+      if (s.comparisons > 0) parts.push('compare: ' + s.comparisons);
+      if (s.monitors > 0)    parts.push('monitor: ' + s.monitors);
+      if (s.unique_buyers > 0) parts.push('buyers: ' + s.unique_buyers);
+      sa.textContent = parts.length ? parts.join(' · ') : 'no activity yet';
+      sa.style.color = parts.length ? 'var(--fg)' : 'var(--dim2)';
     }
-  } else if (b) {
-    const g = b.budget || {};
-    document.getElementById('dl').textContent = g.daily_limit || '\\u2014';
-    document.getElementById('ds').textContent = g.daily_spent || 0;
-    document.getElementById('dr').textContent = g.daily_remaining != null ? g.daily_remaining : '\\u2014';
-    document.getElementById('ts').textContent = g.total_spent || 0;
-    document.getElementById('ep').textContent = b.services_tracked || 0;
-    document.getElementById('ar').textContent = b.audit_history_count || 0;
   }
 }
 
@@ -732,16 +1015,16 @@ async function refreshChain() {
 
 async function triggerBuyerLoop() {
   const btn = document.getElementById('run-now-btn');
-  btn.textContent = 'running…';
+  btn.textContent = 'running...';
   btn.disabled = true;
   try {
     const r = await fetch(B + '/api/run-now', {method: 'POST'});
     const d = await r.json().catch(() => ({}));
-    btn.textContent = d.status === 'ok' ? 'done ✓' : 'error';
+    btn.textContent = d.status === 'ok' ? 'done' : 'error';
   } catch {
     btn.textContent = 'error';
   }
-  setTimeout(() => { btn.textContent = 'run buyer'; btn.disabled = false; }, 3000);
+  setTimeout(() => { btn.textContent = 'run loop'; btn.disabled = false; }, 3000);
 }
 
 refreshStats();

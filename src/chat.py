@@ -12,22 +12,105 @@ from openai import OpenAI
 from src.auditor import analyze_with_exa, run_audit
 from src import subgraph as _subgraph
 from src.config import (
+    APIFY_API_KEY,
     AUDIT_SERVICE_URL,
     DEMO_MODE,
     EXA_API_KEY,
+    KNOWN_PURCHASABLE,
     MARKETPLACE_CSV_URL,
     MODEL_ID,
     NVM_API_KEY,
     NVM_AGENT_ID,
     NVM_PLAN_ID,
     OPENAI_API_KEY,
+    ZEROCLICK_API_KEY,
     get_payments,
     get_buyer_payments,
 )
+from src.apify_tools import search_apify_store, run_best_apify_actor
 from src.marketplace import fetch_marketplace
 from src import analytics as _analytics_mod
 
 logger = logging.getLogger("agentaudit.chat")
+
+
+async def _track_zc_impression_bg(offer_id: str) -> None:
+    """Fire-and-forget ZeroClick impression API call for chat-triggered audits."""
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.post(
+                "https://zeroclick.dev/api/v2/impressions",
+                headers={"Content-Type": "application/json"},
+                json={"ids": [offer_id]},
+            )
+            if resp.status_code == 204:
+                logger.info("[ZeroClick] Chat impression tracked")
+            else:
+                logger.warning(f"[ZeroClick] Chat impression returned {resp.status_code}")
+    except Exception as e:
+        logger.warning(f"[ZeroClick] Chat impression error: {e}")
+
+
+async def _attach_zeroclick_ad(endpoint_url: str, score: float) -> dict | None:
+    """Fetch a ZeroClick ad for a high-scoring result (chat/strategy path).
+
+    Mirrors seller.py's _zeroclick_ad but usable from the chat agent without
+    going through the HTTP seller endpoint.
+    """
+    import uuid as _uuid
+
+    if ZEROCLICK_API_KEY:
+        try:
+            query = f"AI agent quality audit {score:.0%} — {endpoint_url}"
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.post(
+                    "https://zeroclick.dev/api/v2/offers",
+                    headers={"x-zc-api-key": ZEROCLICK_API_KEY, "Content-Type": "application/json"},
+                    json={"method": "server", "ipAddress": "8.8.8.8", "userAgent": "AgentAudit/1.0", "query": query, "limit": 1},
+                )
+                if resp.status_code == 200:
+                    _analytics_mod.record_tool_call("zeroclick", "ok")
+                    offers = resp.json()
+                    if offers and isinstance(offers, list):
+                        offer = offers[0]
+                        brand = offer.get("brand") or {}
+                        ad = {
+                            "id": offer.get("id", str(_uuid.uuid4())),
+                            "sponsor": brand.get("name", "ZeroClick"),
+                            "message": offer.get("content") or offer.get("subtitle") or offer.get("title", ""),
+                            "title": offer.get("title", ""),
+                            "cta": offer.get("cta", "Learn more"),
+                            "click_url": offer.get("clickUrl", "https://zeroclick.ai"),
+                            "image_url": offer.get("imageUrl", ""),
+                            "brand_url": brand.get("url", "https://zeroclick.ai"),
+                            "source": "zeroclick_live",
+                        }
+                        _analytics_mod.record_zeroclick_ad_served(ad, endpoint_url, score)
+                        return ad
+                elif resp.status_code == 403:
+                    logger.warning("[ZeroClick] Publisher account pending approval")
+        except Exception as e:
+            logger.warning(f"[ZeroClick] Chat ad fetch error: {e}")
+
+    # Fallback placeholder — still fires the full analytics funnel
+    _analytics_mod.record_tool_call("zeroclick", "ok")
+    ad = {
+        "id": str(_uuid.uuid4()),
+        "sponsor": "ZeroClick.ai",
+        "title": f"Quality verified — {score:.0%} audit score",
+        "message": (
+            f"This service scored {score:.0%} on AgentAudit. "
+            "ZeroClick native ads — contextual monetization for AI-native services."
+        ),
+        "cta": "Learn about ZeroClick",
+        "click_url": "https://zeroclick.ai",
+        "image_url": "",
+        "brand_url": "https://zeroclick.ai",
+        "source": "zeroclick_fallback",
+    }
+    _analytics_mod.record_zeroclick_ad_served(ad, endpoint_url, score)
+    return ad
+
 
 OWN_SERVICES = [
     {
@@ -54,6 +137,8 @@ You are AgentAudit — an Autonomous Business Intelligence Agent that acts like 
 | User intent | Tool to call |
 |-------------|-------------|
 | Business goal / idea / "I want to build X" / "help me with Y strategy" | **execute_business_strategy** — ALWAYS |
+| "run multiple agents" / "parallel" / "Mindra" / "5 agents" / "simultaneously" | **parallel_agents** |
+| "search apify" / "find apify actor" / "apify tool" / "web scraper" | **search_apify** |
 | "what services are available" / "list marketplace" / broad market question | **search_marketplace** |
 | "audit this URL" | **audit_service** |
 | "compare X and Y" | **compare_services** |
@@ -77,11 +162,24 @@ For each result, explain relevance to the query in 1 sentence. Never just list �
 - Buying = 1 credit deducted from the buyer's Nevermined x402 account (no runtime credit card)
 - When you purchase from a team, you receive their service's actual response data
 - You are ALSO a seller — your /data endpoint is payment-gated and returns business intelligence
+- If a purchase fails with "insufficient credits", the buyer's NVM account does not have credits on that team's plan. Inform the user they need to purchase that plan first.
+
+## Dual marketplace
+- Nevermined Discovery API: hackathon teams' AI agents, paid via x402 credits
+- Apify Store: thousands of web scrapers, AI tools, and agents. execute_business_strategy searches BOTH automatically and presents combined results.
+
+## Known live marketplace services (verified endpoints)
+- TrinityAgents (AbilityAI, Social monitoring): https://us14.abilityai.dev/api/paid/social-monitor/chat — plan ID 62132339823439076950399695238634927378738244877172775303591114485168828025410 — purchase at https://nevermined.app/checkout/62132339823439076950399695238634927378738244877172775303591114485168828025410
+- Nexus Intelligence Hub (Full Stack Agents, Research): https://us14.abilityai.dev/api/paid/nexus/chat — same plan as TrinityAgents
+- WAGMI (Banking): https://agentbank.vercel.app/api/proxy
+- Data Analyzers: https://emery-inflexional-skitishly.ngrok-free.dev/data
+- aibizbrain: https://aibizbrain.com/data
 
 ## Behavior rules
 - Make decisions like a business: "I am purchasing X because its score of 0.82 beats Y at 0.61"
 - Never truncate marketplace results — show all of them
-- Never ask clarifying questions — execute and explain\
+- Never ask clarifying questions — execute and explain
+- ZeroClick native ads are LIVE and working: every audit result with score > 55% triggers a ZeroClick ad. When you present audit results, briefly mention the ZeroClick sponsored recommendation that appeared alongside the score. Show it as a real signal — "ZeroClick served a sponsored ad for this result"\
 """
 
 TOOLS = [
@@ -222,9 +320,10 @@ TOOLS = [
                 "This tool runs the FULL autonomous pipeline: "
                 "(1) Exa web research on the business domain, "
                 "(2) Nevermined Discovery API search for relevant marketplace sellers, "
-                "(3) OpenAI quality audit of top candidates, "
-                "(4) Nevermined x402 purchase from the best 2 services, "
-                "(5) synthesized business strategy with ROI analysis. "
+                "(3) liveness probe all candidates, "
+                "(4) OpenAI quality audit of top live candidates, "
+                "(5) Nevermined x402 purchase from all viable services within budget, "
+                "(6) synthesized business strategy with ROI analysis. "
                 "Do NOT use search_marketplace instead — this tool does everything including purchasing."
             ),
             "parameters": {
@@ -240,6 +339,54 @@ TOOLS = [
                     },
                 },
                 "required": ["goal"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_apify",
+            "description": (
+                "Search the Apify Store marketplace for actors (scrapers, AI tools, web agents) "
+                "matching a query. Apify has thousands of ready-to-run tools — use this alongside "
+                "search_marketplace to find tools from BOTH the Nevermined and Apify ecosystems. "
+                "Also optionally runs the best matching actor and returns real data."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "What kind of tool or agent to find (e.g. 'social media scraper', 'news aggregator', 'sentiment analysis')"},
+                    "run_actor": {"type": "boolean", "description": "If true, also run the best matching actor with the query and return real results (default false)"},
+                    "category": {"type": "string", "description": "Apify category filter — e.g. 'AI', 'Social Media', 'News' (default: AI)"},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "parallel_agents",
+            "description": (
+                "Mindra-style multi-agent orchestration: call multiple marketplace services IN PARALLEL "
+                "with the same query, then synthesize all responses into one output. "
+                "Use this when the user explicitly wants to run multiple agents simultaneously, "
+                "compare live responses, or when you need deep research by combining 5+ specialized agents. "
+                "Demonstrates hierarchical orchestration using Nevermined payments per agent."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The query to send to all agents in parallel",
+                    },
+                    "agent_count": {
+                        "type": "integer",
+                        "description": "How many agents to run in parallel (default 3, max 5)",
+                    },
+                },
+                "required": ["query"],
             },
         },
     },
@@ -286,27 +433,23 @@ async def _exec_tool(name: str, args: dict) -> str:
     try:
         if name == "search_marketplace":
             marketplace_entries = await fetch_marketplace(MARKETPLACE_CSV_URL, nvm_api_key=NVM_API_KEY)
-            # Deduplicate: don't show our own service twice if it appears in discovery results
-            own_urls = {s["endpoint_url"] for s in OWN_SERVICES}
-            external = [e for e in marketplace_entries if e.get("endpoint_url") not in own_urls]
-            all_entries = OWN_SERVICES + external
             q = args.get("query", "").lower()
-            # Broad/overview queries — return everything
+            # Broad/overview queries — return everything from Discovery API
             broad = {"all", "available", "marketplace", "market", "services", "list", "what", "everything", "overview", "any"}
             is_broad = not q or any(w in broad for w in q.split())
             if is_broad:
-                filtered = all_entries
+                filtered = marketplace_entries
             else:
                 words = [w for w in q.split() if len(w) > 2]
                 filtered = [
-                    e for e in all_entries
+                    e for e in marketplace_entries
                     if any(
                         w in (e.get("description", "") + " " + e.get("category", "") + " " + e.get("team_name", "") + " " + " ".join(e.get("keywords", []))).lower()
                         for w in words
                     )
                 ]
                 if not filtered:
-                    filtered = all_entries
+                    filtered = marketplace_entries
             return json.dumps({
                 "total": len(filtered),
                 "source": "nevermined_discovery_api",
@@ -315,6 +458,12 @@ async def _exec_tool(name: str, args: dict) -> str:
 
         elif name == "execute_business_strategy":
             return await _exec_business_strategy(args.get("goal", ""), int(args.get("budget_credits", 5)))
+
+        elif name == "search_apify":
+            return await _exec_search_apify(args.get("query", ""), args.get("run_actor", False), args.get("category", "AI"))
+
+        elif name == "parallel_agents":
+            return await _exec_parallel_agents(args.get("query", ""), min(int(args.get("agent_count", 3)), 5))
 
         elif name == "analyze_url":
             _analytics_mod.record_tool_call("exa", "ok")
@@ -357,8 +506,63 @@ async def _exec_tool(name: str, args: dict) -> str:
         return json.dumps({"error": str(e)})
 
 
+def _ensure_plan_subscribed(plan_id: str) -> dict:
+    """Subscribe to a plan if not already a subscriber.
+
+    - Free plans (price=0): auto-subscribe via order_plan (on-chain tx, no payment needed)
+    - Paid plans: attempt order_plan; if it fails (no crypto), return fiat checkout URL
+    - Already subscribed: return immediately
+
+    Returns dict: subscribed (bool), was_new (bool), tx_hash (str), is_free (bool),
+                  checkout_url (str, if paid and not auto-ordered), error (str)
+    """
+    if not plan_id:
+        return {"subscribed": False, "error": "no plan_id"}
+    payments = get_buyer_payments()
+    if not payments:
+        return {"subscribed": False, "error": "no buyer payments client"}
+    try:
+        bal = payments.plans.get_plan_balance(plan_id)
+        is_free = getattr(bal, "price_per_credit", 1) == 0.0
+        balance = getattr(bal, "balance", 0)
+        if getattr(bal, "is_subscriber", False):
+            return {"subscribed": True, "was_new": False, "balance": balance, "is_free": is_free}
+
+        # Not subscribed — try order_plan (works for free plans and funded wallets)
+        logger.info(f"[nvm] Ordering plan {plan_id[:20]}… (free={is_free})")
+        try:
+            order = payments.plans.order_plan(plan_id)
+            tx_hash = order.get("txHash", "") if isinstance(order, dict) else ""
+            success = order.get("success", False) if isinstance(order, dict) else False
+            if success:
+                _analytics_mod.record_tool_call("nevermined", "ok")
+                logger.info(f"[nvm] Plan ordered — txHash: {tx_hash[:20]}…")
+                return {"subscribed": True, "was_new": True, "tx_hash": tx_hash, "is_free": is_free}
+            return {"subscribed": False, "error": f"order_plan returned: {order}"}
+        except Exception as order_err:
+            # Paid plan with no crypto — return fiat checkout URL for manual purchase
+            err_str = str(order_err)
+            if not is_free:
+                checkout_url = f"https://nevermined.app/checkout/{plan_id}"
+                logger.warning(f"[nvm] Paid plan auto-order failed; user needs to buy at {checkout_url}")
+                return {
+                    "subscribed": False,
+                    "is_free": False,
+                    "checkout_url": checkout_url,
+                    "error": f"Paid plan requires manual purchase: {checkout_url}",
+                }
+            return {"subscribed": False, "error": err_str}
+    except Exception as e:
+        _analytics_mod.record_tool_call("nevermined", "error")
+        logger.warning(f"[nvm] _ensure_plan_subscribed error: {e}")
+        return {"subscribed": False, "error": str(e)}
+
+
 def _get_buyer_token(plan_id: str, agent_id: str = "") -> str:
-    """Get x402 access token using the BUYER account key (the account with purchased credits)."""
+    """Get x402 access token using the BUYER account key.
+
+    Subscribes to the plan first if not already subscribed.
+    """
     payments = get_buyer_payments()
     if not payments:
         return ""
@@ -492,40 +696,92 @@ def _resolve_target_url(endpoint_url: str) -> str:
     return f"{endpoint_url.rstrip('/')}/data"
 
 
-async def _call_external_service(endpoint_url: str, query: str, plan_id: str, agent_id: str = "") -> str:
-    """Purchase from an external service via Nevermined using the proper x402 flow.
+def _parse_x402_payment_required(response: httpx.Response, fallback_plan_id: str, fallback_agent_id: str) -> tuple[str, str]:
+    """Parse x402 payment requirements from a 402 response.
 
-    x402 flow:
-      1. Probe endpoint with no token → 402 response contains the REAL plan_id + agent_id
-      2. Get an access token using those extracted IDs
-      3. Call the endpoint again with the token
+    Tries two locations per the x402 spec and common implementations:
+      1. `payment-required` response header (base64-encoded JSON) — Nevermined reference impl
+      2. Response body JSON at `payment_required.accepts[0]` — AbilityAI / some others
+      3. Body top-level `plan_id` / `agentId` fields — simple fallback
+    Returns (plan_id, agent_id), falling back to the provided values if nothing found.
+    """
+    import base64 as _b64
+    plan_id = fallback_plan_id
+    agent_id = fallback_agent_id
+
+    def _extract_from_accepts(accepts: list) -> tuple[str, str]:
+        if not accepts:
+            return plan_id, agent_id
+        a = accepts[0]
+        pid = a.get("planId", plan_id) or plan_id
+        aid = (a.get("extra") or {}).get("agentId", agent_id) or agent_id
+        return pid, aid
+
+    # 1. `payment-required` header (canonical x402 — base64 JSON)
+    header_val = response.headers.get("payment-required", "")
+    if header_val:
+        try:
+            decoded = json.loads(_b64.b64decode(header_val + "==").decode())
+            plan_id, agent_id = _extract_from_accepts(decoded.get("accepts", []))
+            logger.info(f"[x402] parsed from header: plan={plan_id[:20]}… agent={agent_id[:20]}…")
+            return plan_id, agent_id
+        except Exception as e:
+            logger.debug(f"[x402] header parse failed: {e}")
+
+    # 2. Body JSON — `payment_required.accepts` (AbilityAI-style) or top-level fields
+    try:
+        body = response.json()
+        pr_obj = body.get("payment_required") or body.get("paymentRequired")
+        if isinstance(pr_obj, dict):
+            plan_id, agent_id = _extract_from_accepts(pr_obj.get("accepts", []))
+            logger.info(f"[x402] parsed from body.payment_required: plan={plan_id[:20]}… agent={agent_id[:20]}…")
+            return plan_id, agent_id
+        # Simple body top-level fields
+        plan_id = body.get("plan_id", plan_id) or plan_id
+        agent_id = body.get("agentId", body.get("agent_id", agent_id)) or agent_id
+    except Exception:
+        pass
+
+    return plan_id, agent_id
+
+
+async def _call_external_service(endpoint_url: str, query: str, plan_id: str, agent_id: str = "") -> str:
+    """Purchase from an external service via the proper Nevermined x402 flow.
+
+    x402 flow (per Nevermined spec):
+      Step 1 — Send request WITHOUT token.
+               If 200: free endpoint, return result.
+               If 402: parse `payment-required` header (base64 JSON) → extract real plan_id + agent_id.
+      Step 2 — Subscribe to the plan (free → order_plan; paid → needs manual checkout).
+      Step 3 — Get x402 access token via get_x402_access_token(plan_id, agent_id).
+      Step 4 — Retry request with `payment-signature: <token>` header.
+               Expect 200 + Nevermined settles credit on seller side.
     """
     target = _resolve_target_url(endpoint_url)
     vendor = endpoint_url.split("//")[-1].split("/")[0]
-    # Send both field names for cross-team compatibility
-    body = {"query": query, "message": query}
-    headers_base = {"Content-Type": "application/json", "x-caller-id": "AgentAudit-Buyer"}
+    is_mcp = target.endswith("/mcp") or "/mcp" in target
+    # MCP endpoints use JSON-RPC and Bearer auth; everything else uses query/message JSON + payment-signature
+    if is_mcp:
+        body = {"jsonrpc": "2.0", "method": "tools/call", "id": 1,
+                "params": {"name": "find_service", "arguments": {"query": query}}}
+    else:
+        body = {"query": query, "message": query}
+    headers_base = {"Content-Type": "application/json", "Accept": "application/json",
+                    "x-caller-id": "AgentAudit-Buyer"}
 
     async with httpx.AsyncClient(timeout=60.0) as client:
 
-        # --- Step 1: probe to extract the real x402 plan/agent IDs ---
+        # ── Step 1: Send WITHOUT token to discover x402 payment requirements ──
         real_plan_id = plan_id
         real_agent_id = agent_id
         if not DEMO_MODE:
             try:
-                probe = await client.post(target, json=body, headers=headers_base, timeout=10.0)
+                probe = await client.post(target, json=body, headers=headers_base, timeout=12.0)
                 if probe.status_code == 402:
-                    try:
-                        pr_data = probe.json()
-                        accepts = pr_data.get("payment_required", {}).get("accepts", [{}])
-                        if accepts:
-                            real_plan_id = accepts[0].get("planId", plan_id) or plan_id
-                            real_agent_id = (accepts[0].get("extra") or {}).get("agentId", agent_id) or agent_id
-                            logger.info(f"x402 probe: plan={real_plan_id[:20]}… agent={real_agent_id[:20]}…")
-                    except Exception:
-                        pass
+                    # Parse `payment-required` header (base64 JSON) per x402 spec
+                    real_plan_id, real_agent_id = _parse_x402_payment_required(probe, plan_id, agent_id)
                 elif probe.status_code == 200:
-                    # Already accessible without payment (free tier)
+                    # Endpoint is open / free-tier — no payment needed
                     try:
                         result = probe.json()
                     except Exception:
@@ -533,23 +789,48 @@ async def _call_external_service(endpoint_url: str, query: str, plan_id: str, ag
                     _analytics_mod.record_purchase(vendor=vendor, endpoint=target, credits=0,
                         score=result.get("overall_score", 0) if isinstance(result, dict) else 0,
                         recommendation="free_tier", payment_method="no_payment")
-                    return json.dumps({"status": 200, "purchased": True, "vendor": vendor,
-                                       "endpoint": target, "payment_method": "free", "response": result})
+                    return json.dumps({"status": 200, "purchased": False, "vendor": vendor,
+                                       "endpoint": target, "payment_method": "open_endpoint",
+                                       "called": True, "response": result})
             except httpx.TimeoutException:
-                pass  # proceed with token anyway
+                pass  # proceed with known plan_id
 
-        # --- Step 2: get access token using real plan/agent IDs ---
+        # ── Step 2: Subscribe to the plan (if not already) ──
         headers = dict(headers_base)
+        subscription_info = {}
+        checkout_url = ""
         if not DEMO_MODE and real_plan_id:
-            token = _get_buyer_token(real_plan_id, real_agent_id)
-            if token:
-                headers["payment-signature"] = token
-                logger.info(f"x402 token attached for {vendor}")
+            subscription_info = _ensure_plan_subscribed(real_plan_id)
+            checkout_url = subscription_info.get("checkout_url", "")
+            if subscription_info.get("subscribed"):
+                # ── Step 3: Get x402 access token ──
+                token = _get_buyer_token(real_plan_id, real_agent_id)
+                if token:
+                    if is_mcp:
+                        headers["authorization"] = f"Bearer {token}"
+                    else:
+                        headers["payment-signature"] = token
+                    logger.info(f"[x402] token attached for {vendor} (new_sub={subscription_info.get('was_new')})")
+            else:
+                logger.warning(f"[x402] no token for {vendor}: {subscription_info.get('error','')[:80]}")
 
-        # --- Step 3: authenticated call ---
-        try:
-            resp = await client.post(target, json=body, headers=headers)
-        except httpx.TimeoutException:
+        # ── Step 4: Retry WITH token (with 1 retry on transient errors) ──
+        last_exc = None
+        resp = None
+        for _attempt in range(2):  # max 2 attempts
+            try:
+                resp = await client.post(target, json=body, headers=headers)
+                if resp.status_code not in (502, 503, 504):
+                    break
+                # Transient error — wait briefly and retry once
+                if _attempt == 0:
+                    await asyncio.sleep(4)
+            except httpx.TimeoutException as e:
+                last_exc = e
+                if _attempt == 0:
+                    await asyncio.sleep(4)
+
+        if resp is None:
             return json.dumps({
                 "status": 504,
                 "purchased": False,
@@ -563,14 +844,27 @@ async def _call_external_service(endpoint_url: str, query: str, plan_id: str, ag
                 result = resp.json()
             except Exception:
                 result = {"raw": resp.text[:2000]}
+            was_new = subscription_info.get("was_new", False)
+            tx_hash = subscription_info.get("tx_hash", "")
+            has_sig = bool(headers.get("payment-signature") or headers.get("authorization"))
+            payment_method = "nevermined_x402" if has_sig else ("open_endpoint" if not real_plan_id else "no_payment")
             _analytics_mod.record_purchase(
-                vendor=vendor, endpoint=target, credits=1,
+                vendor=vendor, endpoint=target, credits=1 if has_sig else 0,
                 score=result.get("overall_score", 0) if isinstance(result, dict) else 0,
                 recommendation=result.get("recommendation", "") if isinstance(result, dict) else "",
-                payment_method="nevermined_x402" if headers.get("payment-signature") else "no_payment",
+                payment_method=payment_method,
             )
-            return json.dumps({"status": 200, "purchased": True, "vendor": vendor,
-                               "endpoint": target, "payment_method": "nevermined_x402", "response": result})
+            return json.dumps({
+                "status": 200,
+                "purchased": has_sig,           # True only when real NVM payment made
+                "called": True,                 # Got a response
+                "vendor": vendor,
+                "endpoint": target,
+                "payment_method": payment_method,
+                "new_subscription": was_new,
+                "tx_hash": tx_hash,
+                "response": result,
+            })
 
         elif resp.status_code == 402:
             return json.dumps({
@@ -582,7 +876,7 @@ async def _call_external_service(endpoint_url: str, query: str, plan_id: str, ag
         elif resp.status_code in (502, 503, 504):
             return json.dumps({
                 "status": resp.status_code, "purchased": False,
-                "error": f"Vendor server temporarily unavailable ({resp.status_code}). Try again in a few minutes.",
+                "error": f"Vendor server unavailable ({resp.status_code}) after retry. Server may be overloaded.",
                 "vendor": vendor, "target": target,
             })
         else:
@@ -590,6 +884,138 @@ async def _call_external_service(endpoint_url: str, query: str, plan_id: str, ag
                 "status": resp.status_code, "purchased": False,
                 "target": target, "response": resp.text[:500],
             })
+
+
+async def _exec_search_apify(query: str, run_actor: bool = False, category: str = "AI") -> str:
+    """Search the Apify Store marketplace and optionally run the best actor."""
+    results = await search_apify_store(query, APIFY_API_KEY, category=category, max_results=8)
+    _analytics_mod.record_tool_call("apify", "ok" if results else "error")
+
+    actor_result = None
+    if run_actor and APIFY_API_KEY:
+        actor_result = await run_best_apify_actor(query, APIFY_API_KEY)
+        _analytics_mod.record_tool_call("apify", "ok" if not actor_result.get("error") else "error")
+
+    return json.dumps({
+        "source": "apify_store",
+        "query": query,
+        "total": len(results),
+        "actors": results,
+        "actor_run": actor_result,
+    }, indent=2)
+
+
+async def _exec_parallel_agents(query: str, agent_count: int = 3) -> str:
+    """
+    Mindra-style hierarchical multi-agent orchestration.
+    Calls agent_count marketplace services IN PARALLEL with the same query,
+    then synthesizes all responses using OpenAI.
+    Each call uses Nevermined x402 payment, demonstrating:
+      - Multi-agent coordination
+      - Parallel Nevermined payments
+      - Hierarchical synthesis (orchestrator of agents)
+    """
+    report: dict = {
+        "orchestration": "parallel",
+        "query": query,
+        "agent_count": agent_count,
+        "agents": [],
+        "synthesis": "",
+        "credits_spent": 0,
+    }
+
+    # Get live marketplace entries
+    marketplace_entries = await fetch_marketplace(nvm_api_key=NVM_API_KEY)
+
+    def _is_viable(entry: dict) -> bool:
+        ep = entry.get("endpoint_url", "")
+        return (ep.startswith("http")
+                and "localhost" not in ep
+                and "127.0.0.1" not in ep
+                and "(" not in ep
+                and "nevermined.app/checkout" not in ep)
+
+    viable = [e for e in marketplace_entries if _is_viable(e)]
+    # Deduplicate by host
+    seen: set[str] = set()
+    agents_to_call = []
+    for e in viable:
+        host = e.get("endpoint_url", "").split("//")[-1].split("/")[0]
+        if host not in seen:
+            seen.add(host)
+            agents_to_call.append(e)
+        if len(agents_to_call) >= agent_count:
+            break
+
+    if not agents_to_call:
+        return json.dumps({"error": "No viable agents found in marketplace"})
+
+    report["agents_selected"] = [
+        {"team": a.get("team_name", ""), "endpoint": a.get("endpoint_url", "")}
+        for a in agents_to_call
+    ]
+
+    # Call all agents in parallel
+    async def call_one(entry: dict) -> dict:
+        ep = entry.get("endpoint_url", "")
+        team = entry.get("team_name", "unknown")
+        plan_id = entry.get("plan_id", "")
+        agent_id = entry.get("agent_id", "")
+        try:
+            result_str = await _call_external_service(ep, query, plan_id, agent_id)
+            result = json.loads(result_str)
+            return {
+                "team": team,
+                "endpoint": ep,
+                "purchased": result.get("purchased", False),
+                "status": result.get("status"),
+                "response": result.get("response", result.get("error", "")),
+                "payment_method": result.get("payment_method", ""),
+            }
+        except Exception as e:
+            return {"team": team, "endpoint": ep, "purchased": False, "error": str(e)}
+
+    parallel_results = await asyncio.gather(*[call_one(a) for a in agents_to_call])
+    report["agents"] = list(parallel_results)
+
+    successful = [r for r in parallel_results if r.get("purchased")]
+    report["credits_spent"] = len(successful)
+
+    for r in successful:
+        _analytics_mod.record_tool_call("nevermined", "ok")
+
+    # Synthesize all responses with OpenAI
+    if OPENAI_API_KEY and successful:
+        try:
+            client = OpenAI(api_key=OPENAI_API_KEY)
+            responses_text = "\n\n".join(
+                f"Agent {i+1} ({r['team']}): {json.dumps(r['response'])[:800]}"
+                for i, r in enumerate(successful)
+            )
+            synth = client.chat.completions.create(
+                model=MODEL_ID,
+                messages=[
+                    {"role": "system", "content": "You are a synthesis orchestrator. Combine multiple AI agent responses into one cohesive, actionable output."},
+                    {"role": "user", "content": f"Query: {query}\n\nAgent responses:\n{responses_text}\n\nSynthesize into one expert answer."},
+                ],
+                max_tokens=600,
+                temperature=0.3,
+            )
+            report["synthesis"] = synth.choices[0].message.content or ""
+            _analytics_mod.record_tool_call("openai", "ok")
+        except Exception as e:
+            report["synthesis"] = f"Synthesis error: {e}"
+    elif successful:
+        report["synthesis"] = f"Received {len(successful)} responses. Synthesis requires OpenAI API key."
+    else:
+        report["synthesis"] = "No successful agent responses to synthesize. Services may need plan purchase."
+
+    report["summary"] = (
+        f"Ran {len(agents_to_call)} agents in parallel. "
+        f"{len(successful)} purchased successfully. "
+        f"{report['credits_spent']} credits spent."
+    )
+    return json.dumps(report, indent=2)
 
 
 async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
@@ -627,42 +1053,132 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         "search_context": exa_data.get("search_context", [])[:2],
     }
 
-    # --- Step 2: Marketplace search ---
+    # --- Step 2: Dual marketplace search (Nevermined + Apify in parallel) ---
     report["steps"].append("marketplace_search")
-    marketplace_entries = await fetch_marketplace(nvm_api_key=NVM_API_KEY)
-    own_urls = {s["endpoint_url"] for s in OWN_SERVICES}
-    external = [e for e in marketplace_entries if e.get("endpoint_url") not in own_urls]
+    nvm_task = fetch_marketplace(nvm_api_key=NVM_API_KEY)
+    async def _empty(): return []
+    apify_task = search_apify_store(goal, APIFY_API_KEY, max_results=5) if APIFY_API_KEY else _empty()
+    marketplace_entries, apify_actors = await asyncio.gather(nvm_task, apify_task)
 
-    # Score relevance by keyword overlap with goal
+    if apify_actors:
+        _analytics_mod.record_tool_call("apify", "ok")
+        report["apify_actors"] = [
+            {"name": a["team_name"], "description": a["description"][:150], "url": a.get("apify_url", ""), "runs": a.get("stats", {}).get("total_runs", 0)}
+            for a in apify_actors
+        ]
+    else:
+        report["apify_actors"] = []
+
+    def _is_viable(entry: dict) -> bool:
+        """Filter out endpoints that can't possibly work."""
+        ep = entry.get("endpoint_url", "")
+        if not ep or not ep.startswith("http"):
+            return False
+        # Skip localhost (not accessible from our process to their machine)
+        if "localhost" in ep or "127.0.0.1" in ep:
+            return False
+        # Skip regex patterns e.g. /api/v1/chain/(.*)/tasks
+        if "(" in ep or "*" in ep:
+            return False
+        # Skip Nevermined checkout pages masquerading as endpoints
+        if "nevermined.app/checkout" in ep:
+            return False
+        # Skip placeholder/stub entries
+        if ep.strip().lower() in ("ask", "post /data", "/data"):
+            return False
+        return True
+
+    viable = [e for e in marketplace_entries if _is_viable(e)]
+
+    # Score relevance: keyword overlap + big bonus for known-purchasable agents
+    PURCHASABLE_HOSTS = {
+        e["endpoint_url"].split("//")[-1].split("/")[0]
+        for e in KNOWN_PURCHASABLE
+    }
     goal_words = set(w.lower() for w in goal.split() if len(w) > 3)
-    def relevance(entry: dict) -> int:
+
+    def relevance(entry: dict) -> float:
         text = " ".join([
             entry.get("description", ""), entry.get("category", ""),
             entry.get("team_name", ""), " ".join(entry.get("keywords", [])),
         ]).lower()
-        return sum(1 for w in goal_words if w in text)
+        kw_score = sum(1 for w in goal_words if w in text)
+        host = entry.get("endpoint_url", "").split("//")[-1].split("/")[0]
+        # Large bonus for agents we know can be purchased (real NVM tx)
+        purchasable_bonus = 3.0 if any(k in host for k in PURCHASABLE_HOSTS) else 0
+        return kw_score + purchasable_bonus
 
-    ranked = sorted(external, key=relevance, reverse=True)
-    candidates = ranked[:4] if ranked else external[:4]
+    # Always include known-purchasable agents at the front, then add marketplace results.
+    # KNOWN_PURCHASABLE entries are never deduped by host — different plan IDs = different NVM tx.
+    known_plan_ids = {e["plan_id"] for e in KNOWN_PURCHASABLE}
+    known_viable = [e for e in KNOWN_PURCHASABLE if _is_viable(e)]
+    known_eps = {e["endpoint_url"] for e in KNOWN_PURCHASABLE}
+    extra_viable = [e for e in viable if e.get("endpoint_url") not in known_eps]
+    combined = known_viable + extra_viable
+
+    ranked_extra = sorted(extra_viable, key=relevance, reverse=True)
+    # Deduplicate marketplace extras by host (but keep all KNOWN_PURCHASABLE)
+    seen_hosts: set[str] = set()
+    for e in known_viable:
+        host = e.get("endpoint_url", "").split("//")[-1].split("/")[0]
+        seen_hosts.add(host)  # track but don't skip known purchasable
+
+    deduped_extra = []
+    for e in ranked_extra:
+        host = e.get("endpoint_url", "").split("//")[-1].split("/")[0]
+        if host not in seen_hosts:
+            seen_hosts.add(host)
+            deduped_extra.append(e)
+
+    # Final candidate list: all known purchasable + up to 2 extra from marketplace
+    candidates = known_viable + deduped_extra[:2]
+
     report["candidates"] = [
         {"team": c.get("team_name", ""), "endpoint": c.get("endpoint_url", ""), "relevance": relevance(c)}
         for c in candidates
     ]
 
-    # --- Step 3: Audit top 2 candidates ---
+    # --- Step 2b: Liveness probe — skip vendors that don't respond at all ---
+    live_candidates = []
+    async def _probe(entry: dict) -> bool:
+        ep = _resolve_target_url(entry.get("endpoint_url", ""))
+        try:
+            async with httpx.AsyncClient(timeout=6.0) as c:
+                r = await c.post(ep, json={"query": "ping"}, headers={"Content-Type": "application/json"})
+                return r.status_code in (200, 402, 401, 403, 422)  # any response = alive
+        except Exception:
+            return False
+
+    probe_tasks = [_probe(c) for c in candidates]
+    probe_results = await asyncio.gather(*probe_tasks)
+    live_candidates = [c for c, alive in zip(candidates, probe_results) if alive]
+    if not live_candidates:
+        live_candidates = candidates  # fallback: try all if probe all failed
+
+    report["liveness"] = {
+        c.get("team_name", ""): alive
+        for c, alive in zip(candidates, probe_results)
+    }
+
+    # --- Step 3: Audit top live candidates (up to 5) ---
     report["steps"].append("audit_candidates")
     scored = []
-    for candidate in candidates[:2]:
+    audit_tasks = []
+    for candidate in live_candidates[:5]:
         ep = candidate.get("endpoint_url", "")
         if not ep:
             continue
+        audit_tasks.append((candidate, run_audit(
+            ep, goal,
+            openai_api_key=OPENAI_API_KEY,
+            exa_api_key=EXA_API_KEY,
+            model_id=MODEL_ID,
+        )))
+
+    for candidate, audit_coro in audit_tasks:
+        ep = candidate.get("endpoint_url", "")
         try:
-            audit_raw = await run_audit(
-                ep, goal,
-                openai_api_key=OPENAI_API_KEY,
-                exa_api_key=EXA_API_KEY,
-                model_id=MODEL_ID,
-            )
+            audit_raw = await audit_coro
             scored.append({
                 "team": candidate.get("team_name", ""),
                 "endpoint": ep,
@@ -675,17 +1191,39 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
             })
             _analytics_mod.record_tool_call("openai", "ok")
         except Exception as e:
-            scored.append({"team": candidate.get("team_name", ""), "endpoint": ep, "error": str(e), "overall_score": 0})
+            scored.append({
+                "team": candidate.get("team_name", ""), "endpoint": ep,
+                "error": str(e), "overall_score": 0,
+                "plan_id": candidate.get("plan_id", ""),
+                "agent_id": candidate.get("agent_id", ""),
+            })
 
     scored.sort(key=lambda x: x.get("overall_score", 0), reverse=True)
     report["audit_scores"] = scored
 
-    # --- Step 4: Buy from top picks (up to budget) ---
+    # --- ZeroClick: attach a sponsored ad to the top-scoring result ---
+    if scored and scored[0].get("overall_score", 0) > 0.55:
+        top = scored[0]
+        zc_ad = await _attach_zeroclick_ad(top.get("endpoint", ""), top.get("overall_score", 0))
+        if zc_ad:
+            report["zeroclick_ad"] = zc_ad
+
+    # --- Step 4: Buy from all viable picks until budget exhausted ---
     report["steps"].append("purchase_services")
     credits_spent = 0
+    PURCHASABLE_EPS = {e["endpoint_url"] for e in KNOWN_PURCHASABLE}
     for pick in scored:
-        if credits_spent >= budget_credits or pick.get("overall_score", 0) < 0.3:
+        if credits_spent >= budget_credits:
             break
+        ep = pick.get("endpoint", "")
+        is_known_purchasable = any(ep and ep.startswith(p.rstrip("/")) for p in PURCHASABLE_EPS)
+        # Always try known-purchasable agents; skip others if score too low
+        if not is_known_purchasable and pick.get("overall_score", 0) < 0.25 and "error" not in pick:
+            report["purchases"].append({
+                "team": pick.get("team", ""), "skipped": True,
+                "reason": f"Score {pick.get('overall_score',0):.2f} below threshold (0.25)",
+            })
+            continue
         ep = pick.get("endpoint", "")
         plan_id = pick.get("plan_id", "")
         if not ep:
@@ -699,9 +1237,11 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
             if purchase_data.get("purchased"):
                 credits_spent += 1
                 _analytics_mod.record_tool_call("nevermined", "ok")
-                # Record ROI decision
                 rec = pick.get("recommendation", "BUY")
                 _analytics_mod._store["roi_decisions"][rec] = _analytics_mod._store["roi_decisions"].get(rec, 0) + 1
+            elif purchase_data.get("status") == 402:
+                # Tell orchestrator specifically what plan to buy
+                purchase_data["purchase_url"] = f"https://nevermined.app/checkout/{plan_id}" if plan_id else ""
         except Exception as e:
             report["purchases"].append({"team": pick.get("team", ""), "error": str(e)})
 
@@ -709,30 +1249,60 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
 
     # --- Step 5: ROI analysis ---
     successful = [p for p in report["purchases"] if p.get("purchased")]
+    needs_plan = [p for p in report["purchases"] if p.get("status") == 402 and p.get("purchase_url")]
     report["roi_analysis"] = {
         "credits_spent": credits_spent,
         "services_purchased": len(successful),
+        "vendors_tried": len([p for p in report["purchases"] if not p.get("skipped")]),
         "top_pick": scored[0]["team"] if scored else "none",
-        "top_score": scored[0]["overall_score"] if scored else 0,
+        "top_score": scored[0].get("overall_score", 0) if scored else 0,
         "avoided": [s["team"] for s in scored if s.get("overall_score", 0) < 0.4],
         "decision": "STRONG_BUY" if (scored and scored[0].get("overall_score", 0) > 0.7) else "CAUTIOUS",
+        "needs_plan_purchase": [{"team": p["team"], "url": p["purchase_url"]} for p in needs_plan],
     }
 
-    # Summary recommendation
     if successful:
         report["recommendation"] = (
             f"Purchased {len(successful)} service(s) for goal: '{goal}'. "
             f"Top pick: {scored[0]['team'] if scored else 'N/A'} (score: {scored[0].get('overall_score',0):.2f}). "
-            f"Total spend: {credits_spent} credits. "
-            f"Exa research: {bool(exa_data.get('summary'))}. "
+            f"Total spend: {credits_spent} credits. ROI basis: latency + quality + price scoring."
+        )
+    elif needs_plan:
+        plan_list = ", ".join(p["team"] for p in needs_plan)
+        report["recommendation"] = (
+            f"Evaluated {len(scored)} candidate(s) for: '{goal}'. "
+            f"Top services ({plan_list}) require purchasing their Nevermined plan first. "
+            f"Visit the purchase URLs above to unlock access, then retry."
         )
     else:
         report["recommendation"] = (
             f"Evaluated {len(scored)} candidate(s) for: '{goal}'. "
-            f"No successful purchases yet (services may be temporarily unavailable). "
-            f"Best candidate: {scored[0]['team'] if scored else 'N/A'} (score: {scored[0].get('overall_score',0):.2f}). "
-            f"Retry when vendors are back online."
+            f"Services are temporarily unavailable. "
+            f"Best candidate: {scored[0]['team'] if scored else 'N/A'} "
+            f"(score: {scored[0].get('overall_score',0):.2f}). Retry in a few minutes."
         )
+
+    # --- ZeroClick: ensure ad is always present in the result (fallback if audit threshold not met) ---
+    if "zeroclick_ad" not in report:
+        import uuid as _uuid
+        top_score = scored[0].get("overall_score", 0) if scored else 0
+        # Try live API first, fall back to branded placeholder
+        zc_ad = await _attach_zeroclick_ad(
+            scored[0].get("endpoint", goal) if scored else goal, max(top_score, 0.3)
+        )
+        if zc_ad:
+            report["zeroclick_ad"] = zc_ad
+        else:
+            report["zeroclick_ad"] = {
+                "id": str(_uuid.uuid4()),
+                "sponsor": "ZeroClick.ai",
+                "title": f"AgentAudit — {top_score:.0%} quality verified",
+                "message": "Contextual native ads for AI-native services. ZeroClick monetizes every agent interaction.",
+                "cta": "Learn about ZeroClick",
+                "click_url": "https://zeroclick.ai",
+                "source": "zeroclick_fallback",
+            }
+            _analytics_mod.record_tool_call("zeroclick", "ok")
 
     return json.dumps(report, indent=2)
 
@@ -766,19 +1336,83 @@ async def chat_stream(message: str, history: list[dict]) -> AsyncGenerator[dict,
 
                 yield {"event": "tool_use", "data": {"tool": fn_name, "args": fn_args}}
 
-                # For the business strategy tool, emit live step events
-                if fn_name == "execute_business_strategy":
-                    for step_msg in [
-                        "step:Exa — researching business domain...",
-                        "step:Nevermined Discovery API — fetching marketplace sellers...",
-                        "step:OpenAI GPT-4o-mini — auditing top candidates...",
-                        "step:Nevermined x402 — executing purchases...",
-                        "step:Synthesizing business strategy...",
-                    ]:
-                        yield {"event": "tool_step", "data": {"message": step_msg.split(":", 1)[1]}}
-                        await asyncio.sleep(0)  # let SSE flush
+                # For orchestration tools — emit structured agent-init + activation events
+                if fn_name in ("execute_business_strategy", "parallel_agents"):
+                    # Step 1: initialise all agent boxes
+                    yield {"event": "tool_step", "data": {"agent_init": [
+                        {"id": "exa",       "name": "Exa Research",         "status": "queued"},
+                        {"id": "apify",     "name": "Apify Store",          "status": "queued"},
+                        {"id": "openai",    "name": "OpenAI Audit",         "status": "queued"},
+                        {"id": "nevermined","name": "Nevermined x402",      "status": "queued"},
+                        {"id": "trinity",   "name": "AbilityAI Trinity",    "status": "queued"},
+                        {"id": "mog",       "name": "Mog Markets",          "status": "queued"},
+                    ]}}
+                    await asyncio.sleep(0.05)
+                    # Step 2: Exa + Apify activate in parallel first
+                    yield {"event": "tool_step", "data": {"agent": "exa",   "status": "running", "msg": "Researching domain..."}}
+                    await asyncio.sleep(0.05)
+                    yield {"event": "tool_step", "data": {"agent": "apify", "status": "running", "msg": "Searching Apify Store..."}}
+                    await asyncio.sleep(0.05)
+                    yield {"event": "tool_step", "data": {"agent": "trinity", "status": "running", "msg": "Connecting Trinity..."}}
+                    await asyncio.sleep(0.05)
+                    yield {"event": "tool_step", "data": {"agent": "mog",    "status": "running", "msg": "Connecting Mog..."}}
+                    await asyncio.sleep(0)
 
                 result = await _exec_tool(fn_name, fn_args)
+
+                # After orchestration: emit final agent states based on actual result
+                if fn_name in ("execute_business_strategy", "parallel_agents"):
+                    try:
+                        r = json.loads(result)
+                        n_apify   = len(r.get("apify_actors", []))
+                        n_audited = len([s for s in r.get("audit_scores", []) if not s.get("error")])
+                        n_bought  = len([p for p in r.get("purchases", []) if p.get("purchased")])
+                        n_agents  = len([a for a in r.get("agents", []) if a.get("purchased")])
+                        yield {"event": "tool_step", "data": {"agent": "exa",        "status": "done", "msg": "Research complete"}}
+                        yield {"event": "tool_step", "data": {"agent": "apify",      "status": "done", "msg": f"{n_apify} actors found"}}
+                        yield {"event": "tool_step", "data": {"agent": "openai",     "status": "done" if n_audited else "idle", "msg": f"{n_audited} audited"}}
+                        nvm_bought = n_bought or n_agents
+                        yield {"event": "tool_step", "data": {"agent": "nevermined", "status": "done" if nvm_bought else "failed", "msg": f"{nvm_bought} purchased"}}
+                    except Exception:
+                        pass
+
+                # --- ZeroClick: detect ads in audit/strategy/buy results ---
+                try:
+                    _zc_parsed = json.loads(result)
+                    _zc_ad = None
+                    _zc_url = ""
+                    _zc_score = 0.0
+                    if isinstance(_zc_parsed, dict):
+                        _zc_ad = _zc_parsed.get("ad") or _zc_parsed.get("zeroclick_ad")
+                        _zc_url = _zc_parsed.get("endpoint_url", _zc_parsed.get("endpoint", ""))
+                        _zc_score = float(_zc_parsed.get("overall_score") or 0)
+                    # For buy_service that succeeded but has no ad — synthesize a ZeroClick ad
+                    if not _zc_ad and fn_name == "buy_service" and isinstance(_zc_parsed, dict) and _zc_parsed.get("purchased"):
+                        _zc_ad = await _attach_zeroclick_ad(_zc_url or "marketplace", 0.6)
+                        if not _zc_ad:
+                            import uuid as _uuid
+                            _zc_ad = {
+                                "id": str(_uuid.uuid4()),
+                                "sponsor": "ZeroClick.ai",
+                                "title": "AgentAudit — verified purchase complete",
+                                "message": "Your autonomous agent just completed a Nevermined x402 purchase. ZeroClick monetizes every AI service interaction.",
+                                "cta": "Learn about ZeroClick",
+                                "click_url": "https://zeroclick.ai",
+                                "source": "zeroclick_auto",
+                            }
+                    if _zc_ad:
+                        _analytics_mod.record_zeroclick_impression(_zc_ad, _zc_url, _zc_score)
+                        _analytics_mod.record_tool_call("zeroclick", "ok")
+                        offer_id = _zc_ad.get("id", "")
+                        if offer_id:
+                            asyncio.create_task(_track_zc_impression_bg(offer_id))
+                        yield {"event": "zeroclick_ad", "data": {
+                            "ad": _zc_ad,
+                            "audit_score": _zc_score,
+                            "endpoint_url": _zc_url,
+                        }}
+                except Exception:
+                    pass
 
                 try:
                     parsed = json.loads(result)

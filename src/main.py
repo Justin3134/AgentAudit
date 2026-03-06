@@ -71,11 +71,17 @@ logger = logging.getLogger("agentaudit.main")
 # Lifespan — start buyer loop as background task
 # ---------------------------------------------------------------------------
 
+RENDER_URL = "https://agentaudit.onrender.com"
+
+
 async def _register_with_discovery():
-    """Register AgentAudit as a seller in the Nevermined hackathon Discovery API."""
-    from src.config import NVM_API_KEY, NVM_PLAN_ID, NVM_AGENT_ID, AUDIT_SERVICE_URL
-    if not NVM_API_KEY or not AUDIT_SERVICE_URL or "localhost" in AUDIT_SERVICE_URL:
-        logger.info("Skipping discovery registration (localhost or missing key)")
+    """Register AgentAudit as a seller in the Nevermined hackathon Discovery API.
+
+    Always registers with the public Render URL so other teams can discover and purchase.
+    """
+    from src.config import NVM_API_KEY, NVM_PLAN_ID, NVM_AGENT_ID
+    if not NVM_API_KEY:
+        logger.info("Skipping discovery registration (no NVM_API_KEY)")
         return
     try:
         import httpx
@@ -87,10 +93,12 @@ async def _register_with_discovery():
             "description": (
                 "Autonomous Business Intelligence Agent. Describe a business goal — the agent searches "
                 "the marketplace, audits candidates with OpenAI + Exa, purchases the best services via "
-                "Nevermined, and returns a synthesized strategy. Also sells standalone: audit, compare, monitor."
+                "Nevermined x402, and returns a synthesized strategy. "
+                "Sells standalone services: audit any endpoint, compare two endpoints, health monitor."
             ),
-            "keywords": ["audit", "quality", "business intelligence", "orchestration", "evaluation", "comparison", "monitoring", "AI", "strategy", "research"],
-            "endpointUrl": AUDIT_SERVICE_URL,
+            "keywords": ["audit", "quality", "business intelligence", "orchestration", "evaluation",
+                         "comparison", "monitoring", "AI", "strategy", "research", "buyer", "seller"],
+            "endpointUrl": RENDER_URL,
             "planIds": [NVM_PLAN_ID] if NVM_PLAN_ID else [],
             "nvmAgentId": NVM_AGENT_ID,
             "pricing": {"perRequest": 1, "meteringUnit": "credits"},
@@ -102,7 +110,7 @@ async def _register_with_discovery():
                 json=payload,
             )
             if resp.status_code in (200, 201):
-                logger.info(f"Registered with Nevermined Discovery API: {resp.status_code}")
+                logger.info(f"Registered with Nevermined Discovery: {RENDER_URL} → {resp.status_code}")
             else:
                 logger.warning(f"Discovery registration returned {resp.status_code}: {resp.text[:200]}")
     except Exception as e:

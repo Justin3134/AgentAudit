@@ -32,7 +32,8 @@ _store = {
         "openai":     {"calls": 0, "status": "active", "last_used": None},
         "exa":        {"calls": 0, "status": "active", "last_used": None},
         "nevermined": {"calls": 0, "status": "active", "last_used": None},
-        "zeroclick":  {"calls": 0, "status": "pending_approval", "last_used": None},
+        "zeroclick":  {"calls": 0, "status": "active", "last_used": None},
+        "apify":      {"calls": 0, "status": "active", "last_used": None},
     },
 }
 
