@@ -328,118 +328,209 @@ function showView(v) {
   }
 }
 
+// ─── Flow View — node-link graph with SVG connections ───────────────────────
+
+function _fNode(id, type, content, extraStyle) {
+  return '<div class="flow-node ' + type + '" id="fn-' + id + '" style="' + (extraStyle||'') + '">' + content + '</div>';
+}
+
 function renderFlowView(data) {
   const canvas = document.getElementById('flow-canvas');
   if (!data) {
     canvas.innerHTML = '<div style="color:var(--dim2);padding:40px 0">Run a strategy in Chat to see the workflow here.</div>';
     return;
   }
-
-  const escH = s => { const d = document.createElement('div'); d.textContent = String(s||''); return d.innerHTML; };
-  let html = '';
-
-  // Row 0: Goal
-  html += '<div class="flow-row">';
-  html += '<div class="flow-node goal"><div class="flow-label">Goal</div>' + escH(data.goal || '') + '</div>';
-  html += '</div>';
-
-  // Connector
-  html += '<div class="flow-connector"></div>';
-
-  // Row 1: Search tools
-  html += '<div class="flow-row" style="margin-bottom:8px">';
-  // Marketplace search
-  const nCandidates = (data.candidates||[]).length;
-  html += '<div class="flow-node search"><div class="flow-label">Marketplace</div><div class="flow-score">' + nCandidates + '</div><div style="color:var(--dim);font-size:10px">agents found</div></div>';
-  // Apify
-  const apify = data.apify_actors || [];
-  html += '<div class="flow-node apify"><div class="flow-label">Apify Store</div><div class="flow-score">' + apify.length + '</div><div style="color:var(--dim);font-size:10px">' + (apify.length > 0 ? 'actors found' : 'no results') + '</div></div>';
-  // Exa
-  const exaHighlights = (data.exa_research||{}).highlights || [];
-  html += '<div class="flow-node search"><div class="flow-label">Exa Research</div><div class="flow-score">' + exaHighlights.length + '</div><div style="color:var(--dim);font-size:10px">' + (exaHighlights.length > 0 ? 'insights' : 'no key') + '</div></div>';
-  html += '</div>';
-
-  // Apify actors list
-  if (apify.length > 0) {
-    html += '<div class="flow-row" style="margin-top:-16px;margin-bottom:8px">';
-    apify.slice(0, 3).forEach(a => {
-      const url = a.url || a.apify_url || '';
-      const link = url ? (' <a href="'+escH(url)+'" target="_blank" style="color:var(--dim);text-decoration:none;font-size:9px">→ open</a>') : '';
-      html += '<div class="flow-node apify" style="font-size:10px;min-width:140px"><div style="font-weight:500">' + escH(a.name||'Actor') + '</div><div style="color:var(--dim);font-size:9px">' + escH((a.description||'').substring(0,60)) + '</div>' + link + '</div>';
-    });
-    html += '</div>';
-  }
-
-  html += '<div class="flow-connector"></div>';
-
-  // Row 2: Candidates (scored)
+  const e = s => { const d = document.createElement('div'); d.textContent = String(s||''); return d.innerHTML; };
   const scored = data.audit_scores || [];
-  if (scored.length > 0) {
-    html += '<div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);text-align:center;margin-bottom:8px">Audit scores · OpenAI scoring</div>';
-    html += '<div class="flow-row">';
-    scored.forEach(s => {
-      const sc = s.overall_score || 0;
-      const col = sc >= 0.6 ? 'var(--green)' : sc >= 0.4 ? 'var(--orange)' : 'var(--red)';
-      const roi = s.roi_decision || (sc >= 0.6 ? 'BUY' : sc >= 0.4 ? 'WATCH' : 'AVOID');
-      html += '<div class="flow-node candidate" style="border-color:' + col + '">';
-      html += '<div class="flow-label">' + escH(s.team||'') + '</div>';
-      html += '<div class="flow-score" style="color:' + col + '">' + sc.toFixed(2) + '</div>';
-      html += '<div style="font-size:9px;color:' + col + ';letter-spacing:0.06em">' + roi + '</div>';
-      html += '</div>';
-    });
-    html += '</div>';
-    html += '<div class="flow-connector"></div>';
-  }
-
-  // Row 3: Purchases
-  const purchases = (data.purchases||[]).filter(p => p.purchased || p.skipped);
-  const bought = purchases.filter(p => p.purchased);
-  const skipped = purchases.filter(p => p.skipped);
-  if (purchases.length > 0) {
-    html += '<div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);text-align:center;margin-bottom:8px">Nevermined order_plan — blockchain transactions</div>';
-    html += '<div class="flow-row">';
-    bought.forEach(p => {
-      const tx = (p.tx_hash||'').substring(0,12);
-      const isRepeat = p.repeat_purchase;
-      html += '<div class="flow-node buy">';
-      html += '<div class="flow-label">' + escH(p.team||'') + (isRepeat ? ' <span style="color:var(--orange)">REPEAT</span>' : '') + '</div>';
-      html += '<div style="color:var(--green);font-weight:500;margin:3px 0">order_plan ✓</div>';
-      if (tx) html += '<div class="flow-tx-hash">tx: ' + escH(tx) + '…</div>';
-      html += '</div>';
-    });
-    skipped.forEach(p => {
-      html += '<div class="flow-node skip"><div class="flow-label">' + escH(p.team||'') + '</div><div style="color:var(--red);font-size:10px">' + escH(p.roi_decision||'SKIP') + '</div></div>';
-    });
-    html += '</div>';
-  }
-
-  // ZeroClick ad
-  if (data.zeroclick_ad) {
-    html += '<div class="flow-connector"></div>';
-    const ad = data.zeroclick_ad;
-    html += '<div class="flow-row">';
-    html += '<div class="flow-node zeroclick" style="min-width:280px;text-align:left">';
-    html += '<div class="flow-label" style="color:var(--green)">◉ ZeroClick — Contextual Native Ad</div>';
-    html += '<div style="font-weight:500;margin:3px 0">' + escH(ad.title||ad.sponsor||'') + '</div>';
-    html += '<div style="color:var(--dim);font-size:10px;margin-bottom:6px">' + escH((ad.message||'').substring(0,120)) + '</div>';
-    html += '<a href="' + escH(ad.click_url||'#') + '" target="_blank" style="font-size:10px;color:var(--green);text-decoration:none;border:1px solid #1a3a1a;padding:2px 8px;border-radius:2px">' + escH(ad.cta||'Learn more') + ' →</a>';
-    html += '</div>';
-    html += '</div>';
-  }
-
-  // ROI summary bar
+  const apify = data.apify_actors || [];
+  const exa = data.exa_research || {};
+  const exaHighlights = exa.highlights || [];
+  const allMkt = data.all_marketplace_results || data.candidates || [];
+  const purchases = (data.purchases||[]).filter(p => p.purchased);
   const roi = data.roi_analysis || {};
+  const caps = data.goal_capabilities || [];
+  const trinityPlan = data.trinity_plan || [];
+  const ad = data.zeroclick_ad || null;
+
+  let connections = []; // [{from, to, color}]
+
+  let html = '<svg id="flow-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible"></svg>';
+
+  // ── Row 0: Goal ──────────────────────────────────────────────────────────────
+  html += '<div style="display:flex;justify-content:center;margin-bottom:40px">';
+  html += _fNode('goal', 'goal', '<div class="flow-label">Business Goal</div><div>' + e(data.goal||'') + '</div>' +
+    (caps.length ? '<div style="margin-top:5px;font-size:10px;color:var(--dim)">needs: ' + caps.map(e).join(' · ') + '</div>' : ''));
+  html += '</div>';
+
+  // ── Row 1: Three research branches ───────────────────────────────────────────
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:40px">';
+
+  // Marketplace column
+  html += '<div>';
+  html += _fNode('mkt', 'search', '<div class="flow-label" style="color:#5577ff">Marketplace Search</div>' +
+    '<div class="flow-score">' + allMkt.length + '</div><div style="color:var(--dim);font-size:10px">agents found</div>');
+  connections.push({from:'goal', to:'mkt', color:'#334'});
+  // Marketplace results
+  allMkt.slice(0,4).forEach((m, i) => {
+    const mid = 'mkt-'+i;
+    const sc = scored.find(s => s.team === m.team);
+    const scv = sc ? sc.overall_score : null;
+    const col = scv === null ? 'var(--dim)' : (scv >= 0.6 ? 'var(--green)' : scv >= 0.4 ? 'var(--orange)' : 'var(--red)');
+    html += '<div style="height:12px;width:1px;background:var(--border);margin:0 auto -4px"></div>';
+    html += _fNode(mid, 'candidate' + (sc ? '' : ''), 
+      '<div style="font-weight:500;font-size:11px">' + e(m.team) + '</div>' +
+      (scv !== null ? '<div style="color:' + col + ';font-size:10px">' + scv.toFixed(2) + ' · ' + (sc.roi_decision||'') + '</div>' : '<div style="color:var(--dim2);font-size:9px">' + e((m.price||'')+' '+m.category) + '</div>'),
+      scv !== null ? 'border-color:'+col : '');
+    connections.push({from:'mkt', to:mid, color:'#223'});
+  });
+  html += '</div>';
+
+  // Exa column
+  html += '<div>';
+  const exaOk = exaHighlights.length > 0;
+  html += _fNode('exa', 'search', '<div class="flow-label" style="color:#ff8833">Exa Web Research</div>' +
+    '<div class="flow-score">' + exaHighlights.length + '</div>' +
+    '<div style="color:var(--dim);font-size:10px">' + (exaOk ? 'competitive insights' : 'no key — add EXA_API_KEY') + '</div>');
+  connections.push({from:'goal', to:'exa', color:'#332200'});
+  // Exa highlights
+  exaHighlights.slice(0,3).forEach((h, i) => {
+    const hid = 'exa-'+i;
+    html += '<div style="height:12px;width:1px;background:var(--border);margin:0 auto -4px"></div>';
+    html += _fNode(hid, 'search', '<div style="color:var(--dim);font-size:10px;line-height:1.4">' + e(String(h).substring(0,80)) + '</div>',
+      'border-color:#332200;background:#080500;min-width:unset');
+    connections.push({from:'exa', to:hid, color:'#332200'});
+  });
+  // Competitive analysis
+  if (data.competitive_analysis) {
+    html += '<div style="height:12px;width:1px;background:#332200;margin:0 auto -4px"></div>';
+    html += _fNode('exa-comp', 'search',
+      '<div class="flow-label" style="color:#ff8833">Comparative Analysis</div>' +
+      '<div style="color:var(--dim);font-size:10px;line-height:1.5">' + e(data.competitive_analysis.substring(0,160)) + '</div>',
+      'border-color:#443300;background:#080500');
+    connections.push({from:'exa', to:'exa-comp', color:'#443300'});
+  }
+  html += '</div>';
+
+  // Apify column
+  html += '<div>';
+  html += _fNode('apify', 'apify', '<div class="flow-label" style="color:#6644ff">Apify Store</div>' +
+    '<div class="flow-score">' + apify.length + '</div>' +
+    '<div style="color:var(--dim);font-size:10px">' + (apify.length ? 'actors found' : 'no results') + '</div>');
+  connections.push({from:'goal', to:'apify', color:'#221133'});
+  apify.slice(0,3).forEach((a, i) => {
+    const aid = 'apify-'+i;
+    const url = a.url || a.apify_url || '';
+    html += '<div style="height:12px;width:1px;background:var(--border);margin:0 auto -4px"></div>';
+    html += _fNode(aid, 'apify',
+      '<div style="font-weight:500;font-size:10px">' + e(a.name||'Actor') + '</div>' +
+      '<div style="color:var(--dim);font-size:9px;margin:2px 0">' + e((a.description||'').substring(0,55)) + '</div>' +
+      (url ? '<a href="'+e(url)+'" target="_blank" style="font-size:9px;color:#6644ff;text-decoration:none">open in Apify →</a>' : ''),
+      'border-color:#221133;background:#040309;min-width:unset');
+    connections.push({from:'apify', to:aid, color:'#221133'});
+  });
+  html += '</div>';
+
+  html += '</div>'; // end grid
+
+  // ── Row 2: Purchases ─────────────────────────────────────────────────────────
+  if (purchases.length > 0) {
+    html += '<div style="display:flex;justify-content:center;margin-bottom:8px">';
+    html += '<div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);border-top:1px solid var(--border);width:80%;padding-top:24px;text-align:center">Nevermined order_plan — on-chain purchases</div>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:12px;justify-content:center;margin-bottom:40px">';
+    purchases.forEach((p, i) => {
+      const tx = (p.tx_hash||'').substring(0,14);
+      const pid = 'buy-'+i;
+      connections.push({from: scored.length > 0 ? 'mkt-0' : 'mkt', to: pid, color:'#0a2a0a'});
+      html += _fNode(pid, 'buy',
+        '<div class="flow-label">' + e(p.team||'') + (p.repeat_purchase ? ' <span style="color:var(--orange)">REPEAT</span>' : ' <span style="color:var(--green)">NEW</span>') + '</div>' +
+        '<div style="color:var(--green);font-weight:500;font-size:13px;margin:3px 0">order_plan ✓</div>' +
+        '<div style="color:var(--dim);font-size:9px">roi: ' + e(p.roi_decision||'BUY') + '</div>' +
+        (tx ? '<div class="flow-tx-hash">tx: ' + e(tx) + '…</div>' : '') +
+        (p.price_per_credit ? '<div style="font-size:9px;color:var(--dim2)">$' + p.price_per_credit + '/credit</div>' : ''));
+    });
+    html += '</div>';
+  }
+
+  // ── ZeroClick ────────────────────────────────────────────────────────────────
+  if (ad) {
+    html += '<div style="display:flex;justify-content:center;margin-bottom:40px">';
+    const adId = 'zc-ad-node';
+    purchases.length && connections.push({from:'buy-0', to:adId, color:'#1a3a1a'});
+    html += _fNode(adId, 'zeroclick',
+      '<div class="flow-label" style="color:var(--green)">◉ ZeroClick — AI-Native Contextual Ad</div>' +
+      '<div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;margin-top:6px">' +
+        '<div>' +
+          '<div style="font-weight:500;margin-bottom:3px">' + e(ad.title||ad.sponsor||'') + '</div>' +
+          '<div style="color:var(--dim);font-size:10px;line-height:1.4">' + e((ad.message||'').substring(0,130)) + '</div>' +
+        '</div>' +
+        '<a href="' + e(ad.click_url||'#') + '" target="_blank" style="font-size:10px;color:var(--green);text-decoration:none;border:1px solid #1a3a1a;padding:5px 10px;border-radius:3px;white-space:nowrap">' + e(ad.cta||'Learn more') + ' →</a>' +
+      '</div>',
+      'min-width:450px;text-align:left');
+    html += '</div>';
+  }
+
+  // ── Trinity Business Plan ────────────────────────────────────────────────────
+  if (trinityPlan.length > 0) {
+    html += '<div style="margin-bottom:8px;text-align:center">';
+    html += '<div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--green);border-top:1px solid #1a3a1a;padding-top:24px;display:inline-block;padding-left:20px;padding-right:20px">▲ Trinity Business Plan — autonomous agent fleet</div>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:24px">';
+    const tmplColors = {cornelius:'#334499', ruby:'#993344', outbound:'#449933', webmaster:'#996633'};
+    trinityPlan.forEach((ag, i) => {
+      const col = tmplColors[ag.template] || '#333355';
+      html += '<div style="border:1px solid ' + col + ';border-radius:5px;padding:10px 14px;background:#050508;min-width:130px;max-width:160px">';
+      html += '<div style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:' + col + ';margin-bottom:4px">' + e(ag.template||'agent') + '</div>';
+      html += '<div style="font-weight:500;font-size:12px;margin-bottom:3px">' + e(ag.name||'') + '</div>';
+      html += '<div style="font-size:10px;color:var(--dim);margin-bottom:5px">' + e(ag.role||'') + '</div>';
+      html += '<div style="font-size:10px;color:var(--dim2);line-height:1.4">' + e((ag.task||'').substring(0,70)) + '</div>';
+      html += '<div style="margin-top:6px;width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block"></div><span style="font-size:9px;color:var(--green);margin-left:4px">ready</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // ROI summary
   if (roi.roi_rationale) {
-    html += '<div style="margin-top:24px;border:1px solid var(--border);border-radius:5px;padding:12px 16px;font-size:11px">';
-    html += '<div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);margin-bottom:6px">ROI Analysis</div>';
-    html += '<div>' + escH(roi.roi_rationale) + '</div>';
+    html += '<div style="border:1px solid var(--border);border-radius:5px;padding:12px 16px;font-size:11px;margin-bottom:24px">';
+    html += '<div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);margin-bottom:6px">ROI Summary</div>';
+    html += '<div style="color:var(--dim)">' + e(roi.roi_rationale) + '</div>';
     if (roi.teams_purchased_from && roi.teams_purchased_from.length) {
-      html += '<div style="margin-top:6px;color:var(--green);font-size:10px">Teams: ' + roi.teams_purchased_from.map(escH).join(', ') + '</div>';
+      html += '<div style="margin-top:6px;color:var(--green);font-size:10px">Purchased from: ' + roi.teams_purchased_from.map(e).join(', ') + '</div>';
     }
     html += '</div>';
   }
 
   canvas.innerHTML = html;
+
+  // ── Draw SVG connection lines AFTER DOM update ────────────────────────────
+  requestAnimationFrame(() => {
+    const svg = document.getElementById('flow-svg');
+    if (!svg) return;
+    const canvasRect = canvas.getBoundingClientRect();
+    svg.setAttribute('style', 'position:absolute;top:0;left:0;width:'+canvas.scrollWidth+'px;height:'+canvas.scrollHeight+'px;pointer-events:none;overflow:visible');
+
+    connections.forEach(({from, to, color}) => {
+      const fEl = document.getElementById('fn-'+from);
+      const tEl = document.getElementById('fn-'+to);
+      if (!fEl || !tEl) return;
+      const fR = fEl.getBoundingClientRect();
+      const tR = tEl.getBoundingClientRect();
+      const x1 = fR.left + fR.width/2 - canvasRect.left;
+      const y1 = fR.bottom - canvasRect.top;
+      const x2 = tR.left + tR.width/2 - canvasRect.left;
+      const y2 = tR.top - canvasRect.top;
+      const dy = Math.abs(y2-y1);
+      const path = `M${x1},${y1} C${x1},${y1+dy*0.5} ${x2},${y2-dy*0.5} ${x2},${y2}`;
+      const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+      p.setAttribute('d', path);
+      p.setAttribute('stroke', color||'var(--border)');
+      p.setAttribute('stroke-width', '1');
+      p.setAttribute('fill', 'none');
+      p.setAttribute('opacity', '0.7');
+      svg.appendChild(p);
+    });
+  });
 }
 
 async function get(u) {
@@ -728,15 +819,31 @@ function renderStrategyCard(data) {
     html += '</div>';
   }
 
-  // Audit scores
+  // Audit scores — with explanation of what each sub-score means
   const scores = data.audit_scores || [];
   if (scores.length) {
-    html += '<div style="margin:6px 0;font-size:11px"><span style="color:var(--fg)">Audited candidates:</span><br>';
+    html += '<div style="margin:6px 0;font-size:11px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">';
+    html += '<span style="color:var(--fg)">Audit scores</span>';
+    html += '<span style="font-size:9px;color:var(--dim2)" title="quality=OpenAI content assessment (0.5 default if 402-gated), latency=real HTTP probe, price=plan cost vs market rate, consistency=response variance">quality · latency · price — real measurements</span>';
+    html += '</div>';
     scores.forEach(s => {
       const sc = s.overall_score || 0;
       const cls = sc >= 0.7 ? 'var(--green)' : sc >= 0.45 ? 'var(--orange)' : 'var(--red)';
       const rel = s.error ? '— error' : sc.toFixed(2) + ' · ' + (s.recommendation||'');
-      html += '<div style="display:flex;justify-content:space-between;margin-top:4px"><span style="color:var(--dim)">' + escHtml(s.team||s.endpoint||'') + '</span><span style="color:'+cls+'">' + rel + '</span></div>';
+      const q = s.quality_score; const l = s.latency_score; const p = s.price_score; const c = s.consistency_score;
+      const latMs = s.avg_latency_ms ? s.avg_latency_ms.toFixed(0)+'ms' : null;
+      html += '<div style="margin-top:6px;border-left:2px solid '+cls+';padding-left:8px">';
+      html += '<div style="display:flex;justify-content:space-between"><span style="color:var(--dim)">' + escHtml(s.team||s.endpoint||'') + '</span><span style="color:'+cls+'">' + rel + '</span></div>';
+      if (q !== undefined || l !== undefined) {
+        html += '<div style="font-size:9px;color:var(--dim2);margin-top:2px">';
+        if (q !== undefined) html += 'quality ' + q.toFixed(2) + (q === 0.5 ? ' (estimated — endpoint is paid)' : '') + '  ';
+        if (l !== undefined) html += 'latency ' + l.toFixed(2) + (latMs ? ' ('+latMs+')' : '') + '  ';
+        if (p !== undefined) html += 'price ' + p.toFixed(2) + '  ';
+        if (c !== undefined) html += 'consistency ' + c.toFixed(2);
+        html += '</div>';
+      }
+      html += '</div>';
     });
     html += '</div>';
   }

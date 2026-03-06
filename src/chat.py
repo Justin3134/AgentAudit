@@ -1270,13 +1270,19 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         ep = candidate.get("endpoint_url", "")
         try:
             audit_raw = await audit_coro
+            _scores = audit_raw.get("scores", {})
+            _details = audit_raw.get("details", {})
+            _lat = _details.get("latency", {})
             scored.append({
                 "team": candidate.get("team_name", ""),
                 "endpoint": ep,
                 "overall_score": audit_raw.get("overall_score", 0),
                 "recommendation": audit_raw.get("recommendation", ""),
-                "latency_ms": audit_raw.get("latency", {}).get("avg_ms", 9999),
-                "quality": audit_raw.get("quality", {}).get("score", 0),
+                "quality_score": _scores.get("quality", 0),
+                "latency_score": _scores.get("latency", 0),
+                "price_score": _scores.get("price_value", 0),
+                "consistency_score": _scores.get("consistency", 0),
+                "avg_latency_ms": _lat.get("avg_ms", 0),
                 "plan_id": candidate.get("plan_id", ""),
                 "agent_id": candidate.get("agent_id", ""),
             })
@@ -1551,6 +1557,53 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
             f"No purchases completed — Nevermined sandbox may be temporarily down. "
             f"Best candidate: {top_team} (score: {top_score:.2f}). Retry in a few minutes."
         )
+
+    # --- Include all marketplace results for the flow graph (not just audited top-3) ---
+    report["all_marketplace_results"] = [
+        {
+            "team": e.get("team_name", ""),
+            "endpoint": e.get("endpoint_url", ""),
+            "description": (e.get("description", "") or "")[:100],
+            "price": e.get("price_credits", ""),
+            "category": e.get("category", ""),
+        }
+        for e in viable[:8]
+    ]
+
+    # --- Trinity Business Plan: use OpenAI to generate agent roles for the goal ---
+    # This is TrinityOS-style multi-agent orchestration planning.
+    # Shows how the purchased agents would be orchestrated into a real business.
+    if OPENAI_API_KEY and successful:
+        try:
+            bought_teams = [p["team"] for p in successful]
+            _plan_client = OpenAI(api_key=OPENAI_API_KEY)
+            _plan_resp = _plan_client.chat.completions.create(
+                model=MODEL_ID,
+                messages=[{"role": "user", "content": (
+                    f'Goal: "{goal}"\n'
+                    f'Purchased AI services: {bought_teams}\n\n'
+                    'Generate a Trinity multi-agent business plan. Return a JSON object with key "agents" '
+                    'containing an array of 4-5 agent roles.\n'
+                    'Each agent: {"name": string, "role": string, "task": string, "template": string}\n'
+                    'template must be one of: cornelius, ruby, outbound, webmaster\n'
+                    'Make roles specific to the goal. Example for marketing:\n'
+                    '[{"name":"Cornelius","role":"Market Intelligence","task":"Researches competitors and trends","template":"cornelius"}]\n'
+                    'Return ONLY the JSON object, no explanation.'
+                )}],
+                max_tokens=400, temperature=0.2,
+            )
+            import re as _re
+            _content = _plan_resp.choices[0].message.content.strip()
+            _match = _re.search(r'"agents"\s*:\s*(\[.*?\])', _content, _re.DOTALL)
+            if _match:
+                report["trinity_plan"] = json.loads(_match.group(1))
+            else:
+                _arr = _re.search(r'\[.*?\]', _content, _re.DOTALL)
+                if _arr:
+                    report["trinity_plan"] = json.loads(_arr.group())
+            _analytics_mod.record_tool_call("openai", "ok")
+        except Exception as _e:
+            logger.warning(f"[Trinity plan] generation failed: {_e}")
 
     # --- ZeroClick: ensure ad is always present in the result (fallback if audit threshold not met) ---
     if "zeroclick_ad" not in report:
