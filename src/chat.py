@@ -1923,7 +1923,6 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
     # Nexus = orchestration/business intelligence, Social Monitor = trend analysis.
     trinity_outputs: list[dict] = []
     trinity_agents_called = 0
-    from src.config import KNOWN_PURCHASABLE
     trinity_endpoints = [
         k for k in KNOWN_PURCHASABLE
         if "abilityai.dev" in k.get("endpoint_url", "")
