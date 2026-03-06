@@ -499,6 +499,13 @@ const msgs = document.getElementById('messages');
 const input = document.getElementById('chat-input');
 const btn = document.getElementById('send-btn');
 let sending = false;
+let lastSentMessage = '';
+function retryLastMessage() {
+  if (lastSentMessage && !sending) {
+    input.value = lastSentMessage;
+    sendMessage();
+  }
+}
 let lastStrategyData = null; // store last strategy result for flow view
 
 function showView(v) {
@@ -1480,6 +1487,7 @@ function formatMarkdown(text) {
 async function sendMessage() {
   const text = input.value.trim();
   if (!text || sending) return;
+  lastSentMessage = text;
   sending = true;
   btn.disabled = true;
   input.value = '';
@@ -1492,12 +1500,35 @@ async function sendMessage() {
   let lastStepEl = null;
   let auditCards = '';
 
+  // Show a "thinking" placeholder while waiting for first token
+  const thinkEl = addMsg('assistant', '<span style="color:var(--dim2);font-size:11px">thinking...</span>');
+
   try {
+    const ctrl = new AbortController();
+    // Strategy runs can take 60–90s; give 3 minutes before timing out
+    const tOut = setTimeout(() => ctrl.abort(), 180000);
+
     const resp = await fetch(B + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: text }),
+      signal: ctrl.signal,
     });
+
+    clearTimeout(tOut);
+
+    if (!resp.ok) {
+      thinkEl.remove();
+      assistantText = 'Server error ' + resp.status + '. Please try again.';
+      throw new Error('http_' + resp.status);
+    }
+    if (!resp.body) {
+      thinkEl.remove();
+      assistantText = 'No response body from server.';
+      throw new Error('no_body');
+    }
+
+    thinkEl.remove(); // Remove placeholder once stream starts
 
     const reader = resp.body.getReader();
     const dec = new TextDecoder();
@@ -1660,7 +1691,19 @@ async function sendMessage() {
       }
     }
   } catch(e) {
-    assistantText = 'Connection error — is the buyer running on port 8000?';
+    if (thinkEl && thinkEl.parentNode) thinkEl.remove();
+    const msg = (e && e.message) ? e.message : String(e);
+    const retryBtn = '<div style="margin-top:8px"><button onclick="retryLastMessage()" style="font-family:inherit;font-size:10px;background:transparent;border:1px solid var(--border);color:var(--dim);padding:3px 10px;border-radius:3px;cursor:pointer">Retry</button></div>';
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed')) {
+      assistantText = 'Network error — server may be restarting. Refresh the page or wait a moment, then retry.' + retryBtn;
+    } else if (msg.includes('AbortError') || msg.includes('abort')) {
+      assistantText = 'Request timed out. The strategy may have completed — check the Flow and Business tabs for results.' + retryBtn;
+    } else if (msg.startsWith('http_')) {
+      assistantText = 'Server returned ' + msg.slice(5) + '. Try again.' + retryBtn;
+    } else {
+      assistantText = 'Error: ' + msg + retryBtn;
+    }
+    console.error('[chat] stream error:', msg);
   }
 
   if (lastToolId) markToolDone(lastToolId);

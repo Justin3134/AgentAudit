@@ -21,7 +21,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.config import (
-    NVM_PLAN_ID, NVM_AGENT_ID, SELLER_PORT,
+    NVM_PLAN_ID, NVM_AGENT_ID, NVM_ACCEPTED_PLAN_IDS, SELLER_PORT,
     OPENAI_API_KEY, MODEL_ID, EXA_API_KEY, ZEROCLICK_API_KEY,
     DEMO_MODE, AUDIT_SERVICE_URL, get_payments,
 )
@@ -59,7 +59,12 @@ def _record(endpoint: str, credits: int, caller: str = "unknown", payment_method
 # ---------------------------------------------------------------------------
 
 async def _gate(request: Request, endpoint: str, credits: int) -> Optional[JSONResponse]:
-    """Return a 402 JSONResponse if payment fails, or None on success."""
+    """Return a 402 JSONResponse if payment fails, or None on success.
+
+    Tries each plan in NVM_ACCEPTED_PLAN_IDS in order so that both the primary
+    AgentAudit plan and the AgentAuditUSDC plan (and any future plans) are
+    accepted without requiring buyers to use a specific plan.
+    """
     if DEMO_MODE:
         logger.info(f"[DEMO] Skipping payment for {endpoint} ({credits} credits)")
         return None
@@ -68,7 +73,8 @@ async def _gate(request: Request, endpoint: str, credits: int) -> Optional[JSONR
 
     token = request.headers.get("payment-signature")
 
-    payment_required = build_payment_required(
+    # Use primary plan for the 402 challenge header shown to unauthenticated callers
+    primary_payment_required = build_payment_required(
         plan_id=NVM_PLAN_ID,
         endpoint=endpoint,
         agent_id=NVM_AGENT_ID,
@@ -77,13 +83,14 @@ async def _gate(request: Request, endpoint: str, credits: int) -> Optional[JSONR
 
     if not token:
         encoded = base64.b64encode(
-            json.dumps(payment_required.model_dump(by_alias=True)).encode()
+            json.dumps(primary_payment_required.model_dump(by_alias=True)).encode()
         ).decode()
         return JSONResponse(
             status_code=402,
             content={
                 "error": "Payment Required",
                 "plan_id": NVM_PLAN_ID,
+                "accepted_plan_ids": NVM_ACCEPTED_PLAN_IDS,
                 "credits": credits,
                 "message": f"This endpoint costs {credits} credit(s). Include a valid payment-signature header.",
             },
@@ -91,30 +98,47 @@ async def _gate(request: Request, endpoint: str, credits: int) -> Optional[JSONR
         )
 
     payments = get_payments()
+    last_error: str = "No accepted plans configured"
+    verified_payment_required = None
+    verification = None
 
-    try:
-        verification = payments.facilitator.verify_permissions(
-            payment_required=payment_required,
-            x402_access_token=token,
-            max_amount=str(credits),
+    for plan_id in NVM_ACCEPTED_PLAN_IDS:
+        payment_required = build_payment_required(
+            plan_id=plan_id,
+            endpoint=endpoint,
+            agent_id=NVM_AGENT_ID,
+            http_verb="POST",
         )
-        _analytics_mod.record_tool_call("nevermined", "ok")
-        if not verification.is_valid:
-            return JSONResponse(
-                status_code=402,
-                content={
-                    "error": "Payment verification failed",
-                    "reason": getattr(verification, "invalid_reason", "Unknown"),
-                },
+        try:
+            result = payments.facilitator.verify_permissions(
+                payment_required=payment_required,
+                x402_access_token=token,
+                max_amount=str(credits),
             )
-    except Exception as e:
-        logger.error(f"Payment verification error: {e}")
-        _analytics_mod.record_tool_call("nevermined", "error")
-        return JSONResponse(status_code=402, content={"error": f"Payment verification error: {e}"})
+            if result.is_valid:
+                verified_payment_required = payment_required
+                verification = result
+                logger.info(f"Payment verified via plan {plan_id} for {endpoint}")
+                break
+            else:
+                last_error = getattr(result, "invalid_reason", "Invalid token")
+                logger.debug(f"Plan {plan_id} rejected token: {last_error}")
+        except Exception as e:
+            last_error = str(e)
+            logger.debug(f"Plan {plan_id} verification error: {e}")
+
+    _analytics_mod.record_tool_call("nevermined", "ok" if verified_payment_required else "error")
+
+    if not verified_payment_required:
+        logger.error(f"Payment verification failed for all plans: {last_error}")
+        return JSONResponse(
+            status_code=402,
+            content={"error": "Payment verification failed", "reason": last_error},
+        )
 
     try:
         payments.facilitator.settle_permissions(
-            payment_required=payment_required,
+            payment_required=verified_payment_required,
             x402_access_token=token,
             max_amount=str(credits),
             agent_request_id=getattr(verification, "agent_request_id", None),

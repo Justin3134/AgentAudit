@@ -649,7 +649,7 @@ async def api_chat(request: Request):
                 history[:] = history[-30:]
             _chat_histories[session_id] = history
 
-    return EventSourceResponse(event_generator(), ping=15)
+    return EventSourceResponse(event_generator(), ping=5)  # ping every 5s to keep Render connection alive
 
 
 @buyer_app.get("/health")
