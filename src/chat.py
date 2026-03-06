@@ -66,7 +66,7 @@ async def _attach_zeroclick_ad(endpoint_url: str, score: float) -> dict | None:
                 resp = await client.post(
                     "https://zeroclick.dev/api/v2/offers",
                     headers={"x-zc-api-key": ZEROCLICK_API_KEY, "Content-Type": "application/json"},
-                    json={"method": "server", "ipAddress": "8.8.8.8", "userAgent": "AgentAudit/1.0", "query": query, "limit": 1},
+                    json={"method": "client", "query": query, "context": "AI agent marketplace, autonomous purchasing, Nevermined", "limit": 1},
                 )
                 if resp.status_code == 200:
                     _analytics_mod.record_tool_call("zeroclick", "ok")
