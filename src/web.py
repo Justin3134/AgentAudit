@@ -163,7 +163,28 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 .empty { color: var(--dim2); font-size: 11px; padding: 8px 0; }
 
 /* ---- Live orchestration grid (TrinityOS-style) ---- */
-.orch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.orch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 6px; }
+
+/* ---- Flow view nodes ---- */
+.flow-node {
+  border: 1px solid var(--border); border-radius: 5px;
+  padding: 8px 12px; background: #060606; display: inline-block;
+  font-size: 11px; position: relative; min-width: 100px; text-align: center;
+  transition: border-color 0.3s;
+}
+.flow-node.goal { border-color: var(--orange); background: #120a00; min-width: 180px; font-size: 13px; font-weight: 500; }
+.flow-node.search { border-color: #334; background: #05050a; }
+.flow-node.candidate { border-color: var(--border); min-width: 120px; }
+.flow-node.buy { border-color: var(--green); background: #040d04; }
+.flow-node.skip { border-color: var(--red); background: #0d0404; opacity: 0.7; }
+.flow-node.zeroclick { border-color: #1a3a1a; background: #050f05; }
+.flow-node.apify { border-color: #1a1a3a; background: #05050f; }
+.flow-row { display: flex; gap: 12px; justify-content: center; margin-bottom: 32px; flex-wrap: wrap; }
+.flow-label { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin-bottom: 3px; }
+.flow-score { font-size: 16px; font-weight: 300; margin: 2px 0; }
+.flow-connector { width: 1px; height: 24px; background: var(--border); margin: 0 auto -8px; }
+.flow-line-row { display: flex; justify-content: center; margin-bottom: -8px; position: relative; }
+.flow-tx-hash { font-size: 9px; color: var(--dim2); margin-top: 3px; }
 .agent-box {
   border: 1px solid var(--border); border-radius: 4px;
   padding: 8px 10px; font-size: 10px; position: relative;
@@ -200,11 +221,22 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
       <div class="svc-status" id="tool-zc-wrap" title="ZeroClick native ads — live"><span class="dot" id="dot-zc"></span><span style="font-size:10px">ZeroClick</span><span id="tool-zc-status" style="font-size:9px;color:var(--green);margin-left:3px">live</span></div>
       <div class="svc-status" id="tool-apify-wrap" title="Apify Store — web scrapers and AI actors marketplace"><span class="dot up" id="dot-apify"></span><span style="font-size:10px">Apify</span><span id="tool-apify-count" style="font-size:9px;color:var(--dim);margin-left:3px;display:none"></span></div>
       <div style="width:1px;height:16px;background:var(--border);margin:0 4px"></div>
-      <button id="run-now-btn" style="font-size:10px;font-family:inherit;background:transparent;border:1px solid var(--dim2);color:var(--dim);padding:3px 8px;border-radius:3px;cursor:pointer;letter-spacing:0.05em" title="Manually trigger the autonomous buyer loop" onclick="triggerBuyerLoop()">run loop</button>
+      <div style="display:flex;gap:4px">
+        <button id="btn-chat" onclick="showView('chat')" style="font-size:10px;font-family:inherit;background:var(--fg);border:1px solid var(--fg);color:var(--bg);padding:3px 10px;border-radius:3px;cursor:pointer;letter-spacing:0.05em">Chat</button>
+        <button id="btn-flow" onclick="showView('flow')" style="font-size:10px;font-family:inherit;background:transparent;border:1px solid var(--dim2);color:var(--dim);padding:3px 10px;border-radius:3px;cursor:pointer;letter-spacing:0.05em">Flow</button>
+      </div>
     </div>
   </header>
 
-  <div class="chat-panel">
+  <!-- Flow View (hidden by default) -->
+  <div id="view-flow" style="display:none;grid-column:1;overflow:auto;padding:24px 32px;background:var(--bg)">
+    <div style="font-size:10px;color:var(--dim);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:20px">Workflow — last strategy run</div>
+    <div id="flow-canvas" style="position:relative;min-height:500px;font-size:11px">
+      <div style="color:var(--dim2);padding:40px 0">Run a strategy in Chat to see the workflow here.</div>
+    </div>
+  </div>
+
+  <div id="view-chat" class="chat-panel">
     <div class="chat-messages" id="messages">
       <div class="welcome">
         <strong>AgentAudit</strong> — Autonomous Business Intelligence<br><br>
@@ -227,62 +259,37 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 
     <div class="section-label">Live Orchestration <span style="font-size:9px;color:var(--dim)">· agents running now</span></div>
     <div class="orch-grid" id="orch-grid">
-      <div class="agent-box idle" id="orch-exa"        style="grid-column:1"><div class="agent-box-name">Exa Research</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-apify"       style="grid-column:2"><div class="agent-box-name">Apify Store</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-openai"      style="grid-column:1"><div class="agent-box-name">OpenAI Audit</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-nevermined"  style="grid-column:2"><div class="agent-box-name">Nevermined x402</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-trinity"     style="grid-column:1"><div class="agent-box-name" style="color:var(--green)">▲ AbilityAI Trinity</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+        <div class="agent-box idle" id="orch-exa"       ><div class="agent-box-name">Exa Research</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-apify"      ><div class="agent-box-name">Apify Store</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-openai"     ><div class="agent-box-name">OpenAI Audit</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-nevermined" ><div class="agent-box-name">Nevermined</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-trinity"    ><div class="agent-box-name" style="color:var(--green)">▲ Trinity: Nexus</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-social"     ><div class="agent-box-name" style="color:var(--green)">▲ Trinity: Social</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
     </div>
     <div class="divider"></div>
 
-    <div class="section-label">Buyer <span style="font-size:9px;color:var(--dim);letter-spacing:0">· outgoing purchases</span></div>
-    <div class="stat-row"><span class="stat-key">purchased</span><span class="stat-val" id="ts">0</span></div>
+    <div class="section-label">Purchases <span style="font-size:9px;color:var(--dim);letter-spacing:0">· Nevermined order_plan</span></div>
+    <div class="stat-row"><span class="stat-key">total</span><span class="stat-val" id="ts">0</span></div>
     <div class="stat-row"><span class="stat-key">credits spent</span><span class="stat-val" id="ds">0</span></div>
-    <div class="stat-row"><span class="stat-key">nvm balance</span><span class="stat-val" id="nvm-balance">&mdash;</span></div>
+    <div class="stat-row"><span class="stat-key">wallet</span><span class="stat-val" id="nvm-balance">&mdash;</span></div>
     <div id="txs-buyer" style="margin-top:6px"><div class="empty">no purchases yet</div></div>
     <div class="divider"></div>
 
-    <div class="section-label">Transactions <span style="font-size:9px;color:var(--dim);letter-spacing:0">· verified on-chain</span></div>
-    <div id="txs"><div class="empty">none yet</div></div>
+    <div class="section-label">Seller <span style="font-size:9px;color:var(--dim);letter-spacing:0">· incoming</span></div>
+    <div class="stat-row"><span class="stat-key">credits earned</span><span class="stat-val" id="rev">0</span></div>
+    <div class="stat-row"><span class="stat-key">buyers</span><span class="stat-val" id="ub">0</span></div>
+    <div style="font-size:10px;color:var(--dim2);margin-top:4px;padding-bottom:4px" id="seller-activity">no activity yet</div>
     <div class="divider"></div>
 
-    <div class="section-label">ROI Decisions</div>
-    <div id="roi" style="padding:4px 0;font-size:11px"><span style="color:var(--dim)">none yet</span></div>
-    <div class="divider"></div>
-
-    <div class="section-label">ZeroClick <span style="font-size:9px;color:var(--green);letter-spacing:0">● live</span></div>
-    <div id="zc-live-ad" style="display:none;border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin-bottom:8px;background:rgba(0,255,100,0.03)">
-      <div style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--dim);margin-bottom:5px">◉ ZeroClick Sponsored</div>
-      <div id="zc-ad-title" style="font-size:12px;font-weight:bold;margin-bottom:4px"></div>
-      <div id="zc-ad-msg" style="font-size:11px;color:var(--dim);line-height:1.5;margin-bottom:8px"></div>
-      <a id="zc-ad-cta" href="#" target="_blank" rel="noopener" style="font-size:10px;color:var(--green);text-decoration:none;letter-spacing:0.05em" onclick="trackZcClick(this)"></a>
+    <div class="section-label">ZeroClick <span style="font-size:9px;letter-spacing:0" id="tool-zc-status" style="color:var(--green)">live</span></div>
+    <div id="zc-live-ad" style="display:none;border:1px solid #1a3a1a;border-radius:4px;padding:10px 12px;margin-bottom:8px;background:#050f05">
+      <div style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);margin-bottom:5px">◉ Sponsored — ZeroClick Native</div>
+      <div id="zc-ad-title" style="font-size:12px;font-weight:bold;margin-bottom:4px;line-height:1.4"></div>
+      <div id="zc-ad-msg" style="font-size:10px;color:var(--dim);line-height:1.5;margin-bottom:8px"></div>
+      <a id="zc-ad-cta" href="#" target="_blank" rel="noopener" style="font-size:10px;color:var(--green);text-decoration:none;letter-spacing:0.05em;border:1px solid #1a3a1a;padding:3px 8px;border-radius:2px" onclick="trackZcClick(this)"></a>
     </div>
-    <div class="stat-row"><span class="stat-key">ads served</span><span class="stat-val" id="zc-served">0</span></div>
     <div class="stat-row"><span class="stat-key">impressions</span><span class="stat-val" id="zc-imp">0</span></div>
     <div class="stat-row"><span class="stat-key">conversions</span><span class="stat-val" id="zc-conv">0</span></div>
-    <div class="stat-row"><span class="stat-key">revenue driven</span><span class="stat-val" id="zc-rev">0</span></div>
-    <div class="divider"></div>
-
-    <div class="section-label">Vendors</div>
-    <div id="vbs"><div class="empty">no vendors</div></div>
-    <div class="divider"></div>
-
-    <div class="section-label">Coverage</div>
-    <div class="stat-row"><span class="stat-key">endpoints tracked</span><span class="stat-val" id="ep">0</span></div>
-    <div class="stat-row"><span class="stat-key">audit records</span><span class="stat-val" id="ar">0</span></div>
-    <div class="divider"></div>
-
-    <div class="section-label">On-Chain <span style="font-size:9px;color:var(--dim);letter-spacing:0">(Base Sepolia)</span></div>
-    <div class="stat-row"><span class="stat-key">total mints</span><span class="stat-val" id="ch-mints">&mdash;</span></div>
-    <div class="stat-row"><span class="stat-key">total burns</span><span class="stat-val" id="ch-burns">&mdash;</span></div>
-    <div class="stat-row"><span class="stat-key">credits minted</span><span class="stat-val" id="ch-cminted">&mdash;</span></div>
-    <div class="stat-row"><span class="stat-key">credits burned</span><span class="stat-val" id="ch-cburned">&mdash;</span></div>
-    <div class="stat-row"><span class="stat-key">USDC volume</span><span class="stat-val" id="ch-usdc">&mdash;</span></div>
-    <div class="stat-row"><span class="stat-key">agreements</span><span class="stat-val" id="ch-agreements">&mdash;</span></div>
-    <div style="margin-top:10px;font-size:10px;color:var(--dim);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px">Plan burns (recent)</div>
-    <div id="ch-burns-feed" style="font-size:10px;line-height:1.7"><span style="color:var(--dim2)">loading...</span></div>
-    <div style="margin-top:10px;font-size:10px;color:var(--dim);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px">Daily activity</div>
-    <div id="ch-daily-feed" style="font-size:10px;line-height:1.7"><span style="color:var(--dim2)">loading...</span></div>
   </div>
 </div>
 
@@ -292,6 +299,148 @@ const msgs = document.getElementById('messages');
 const input = document.getElementById('chat-input');
 const btn = document.getElementById('send-btn');
 let sending = false;
+let lastStrategyData = null; // store last strategy result for flow view
+
+function showView(v) {
+  const chat = document.getElementById('view-chat');
+  const flow = document.getElementById('view-flow');
+  const btnChat = document.getElementById('btn-chat');
+  const btnFlow = document.getElementById('btn-flow');
+  if (v === 'flow') {
+    chat.style.display = 'none';
+    flow.style.display = '';
+    btnFlow.style.background = 'var(--fg)';
+    btnFlow.style.color = 'var(--bg)';
+    btnFlow.style.borderColor = 'var(--fg)';
+    btnChat.style.background = 'transparent';
+    btnChat.style.color = 'var(--dim)';
+    btnChat.style.borderColor = 'var(--dim2)';
+    renderFlowView(lastStrategyData);
+  } else {
+    flow.style.display = 'none';
+    chat.style.display = '';
+    btnChat.style.background = 'var(--fg)';
+    btnChat.style.color = 'var(--bg)';
+    btnChat.style.borderColor = 'var(--fg)';
+    btnFlow.style.background = 'transparent';
+    btnFlow.style.color = 'var(--dim)';
+    btnFlow.style.borderColor = 'var(--dim2)';
+  }
+}
+
+function renderFlowView(data) {
+  const canvas = document.getElementById('flow-canvas');
+  if (!data) {
+    canvas.innerHTML = '<div style="color:var(--dim2);padding:40px 0">Run a strategy in Chat to see the workflow here.</div>';
+    return;
+  }
+
+  const escH = s => { const d = document.createElement('div'); d.textContent = String(s||''); return d.innerHTML; };
+  let html = '';
+
+  // Row 0: Goal
+  html += '<div class="flow-row">';
+  html += '<div class="flow-node goal"><div class="flow-label">Goal</div>' + escH(data.goal || '') + '</div>';
+  html += '</div>';
+
+  // Connector
+  html += '<div class="flow-connector"></div>';
+
+  // Row 1: Search tools
+  html += '<div class="flow-row" style="margin-bottom:8px">';
+  // Marketplace search
+  const nCandidates = (data.candidates||[]).length;
+  html += '<div class="flow-node search"><div class="flow-label">Marketplace</div><div class="flow-score">' + nCandidates + '</div><div style="color:var(--dim);font-size:10px">agents found</div></div>';
+  // Apify
+  const apify = data.apify_actors || [];
+  html += '<div class="flow-node apify"><div class="flow-label">Apify Store</div><div class="flow-score">' + apify.length + '</div><div style="color:var(--dim);font-size:10px">' + (apify.length > 0 ? 'actors found' : 'no results') + '</div></div>';
+  // Exa
+  const exaHighlights = (data.exa_research||{}).highlights || [];
+  html += '<div class="flow-node search"><div class="flow-label">Exa Research</div><div class="flow-score">' + exaHighlights.length + '</div><div style="color:var(--dim);font-size:10px">' + (exaHighlights.length > 0 ? 'insights' : 'no key') + '</div></div>';
+  html += '</div>';
+
+  // Apify actors list
+  if (apify.length > 0) {
+    html += '<div class="flow-row" style="margin-top:-16px;margin-bottom:8px">';
+    apify.slice(0, 3).forEach(a => {
+      const url = a.url || a.apify_url || '';
+      const link = url ? (' <a href="'+escH(url)+'" target="_blank" style="color:var(--dim);text-decoration:none;font-size:9px">→ open</a>') : '';
+      html += '<div class="flow-node apify" style="font-size:10px;min-width:140px"><div style="font-weight:500">' + escH(a.name||'Actor') + '</div><div style="color:var(--dim);font-size:9px">' + escH((a.description||'').substring(0,60)) + '</div>' + link + '</div>';
+    });
+    html += '</div>';
+  }
+
+  html += '<div class="flow-connector"></div>';
+
+  // Row 2: Candidates (scored)
+  const scored = data.audit_scores || [];
+  if (scored.length > 0) {
+    html += '<div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);text-align:center;margin-bottom:8px">Audit scores · OpenAI scoring</div>';
+    html += '<div class="flow-row">';
+    scored.forEach(s => {
+      const sc = s.overall_score || 0;
+      const col = sc >= 0.6 ? 'var(--green)' : sc >= 0.4 ? 'var(--orange)' : 'var(--red)';
+      const roi = s.roi_decision || (sc >= 0.6 ? 'BUY' : sc >= 0.4 ? 'WATCH' : 'AVOID');
+      html += '<div class="flow-node candidate" style="border-color:' + col + '">';
+      html += '<div class="flow-label">' + escH(s.team||'') + '</div>';
+      html += '<div class="flow-score" style="color:' + col + '">' + sc.toFixed(2) + '</div>';
+      html += '<div style="font-size:9px;color:' + col + ';letter-spacing:0.06em">' + roi + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<div class="flow-connector"></div>';
+  }
+
+  // Row 3: Purchases
+  const purchases = (data.purchases||[]).filter(p => p.purchased || p.skipped);
+  const bought = purchases.filter(p => p.purchased);
+  const skipped = purchases.filter(p => p.skipped);
+  if (purchases.length > 0) {
+    html += '<div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);text-align:center;margin-bottom:8px">Nevermined order_plan — blockchain transactions</div>';
+    html += '<div class="flow-row">';
+    bought.forEach(p => {
+      const tx = (p.tx_hash||'').substring(0,12);
+      const isRepeat = p.repeat_purchase;
+      html += '<div class="flow-node buy">';
+      html += '<div class="flow-label">' + escH(p.team||'') + (isRepeat ? ' <span style="color:var(--orange)">REPEAT</span>' : '') + '</div>';
+      html += '<div style="color:var(--green);font-weight:500;margin:3px 0">order_plan ✓</div>';
+      if (tx) html += '<div class="flow-tx-hash">tx: ' + escH(tx) + '…</div>';
+      html += '</div>';
+    });
+    skipped.forEach(p => {
+      html += '<div class="flow-node skip"><div class="flow-label">' + escH(p.team||'') + '</div><div style="color:var(--red);font-size:10px">' + escH(p.roi_decision||'SKIP') + '</div></div>';
+    });
+    html += '</div>';
+  }
+
+  // ZeroClick ad
+  if (data.zeroclick_ad) {
+    html += '<div class="flow-connector"></div>';
+    const ad = data.zeroclick_ad;
+    html += '<div class="flow-row">';
+    html += '<div class="flow-node zeroclick" style="min-width:280px;text-align:left">';
+    html += '<div class="flow-label" style="color:var(--green)">◉ ZeroClick — Contextual Native Ad</div>';
+    html += '<div style="font-weight:500;margin:3px 0">' + escH(ad.title||ad.sponsor||'') + '</div>';
+    html += '<div style="color:var(--dim);font-size:10px;margin-bottom:6px">' + escH((ad.message||'').substring(0,120)) + '</div>';
+    html += '<a href="' + escH(ad.click_url||'#') + '" target="_blank" style="font-size:10px;color:var(--green);text-decoration:none;border:1px solid #1a3a1a;padding:2px 8px;border-radius:2px">' + escH(ad.cta||'Learn more') + ' →</a>';
+    html += '</div>';
+    html += '</div>';
+  }
+
+  // ROI summary bar
+  const roi = data.roi_analysis || {};
+  if (roi.roi_rationale) {
+    html += '<div style="margin-top:24px;border:1px solid var(--border);border-radius:5px;padding:12px 16px;font-size:11px">';
+    html += '<div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);margin-bottom:6px">ROI Analysis</div>';
+    html += '<div>' + escH(roi.roi_rationale) + '</div>';
+    if (roi.teams_purchased_from && roi.teams_purchased_from.length) {
+      html += '<div style="margin-top:6px;color:var(--green);font-size:10px">Teams: ' + roi.teams_purchased_from.map(escH).join(', ') + '</div>';
+    }
+    html += '</div>';
+  }
+
+  canvas.innerHTML = html;
+}
 
 async function get(u) {
   try { const r = await fetch(u); return r.ok ? r.json() : null; }
@@ -493,15 +642,15 @@ function renderOrchestration(data) {
   const nvmMsg = nBought > 0 ? nBought + ' purchased' : (nFailed.length > 0 ? nFailed.length + ' failed' : 'no purchases');
   orchSetAgent('nevermined', nvmStatus, nvmMsg);
 
-  // Trinity: find any purchase from abilityai OR any that worked
-  const trinityPurchase = purchases.find(p => (p.endpoint||p.team||'').includes('abilityai'));
-  if (trinityPurchase) {
-    const trinityOk = trinityPurchase.purchased;
-    orchSetAgent('trinity', trinityOk ? 'done' : 'failed',
-      trinityOk ? 'purchased ✓' : (trinityPurchase.error||'failed').substring(0,20));
-  } else {
-    orchSetAgent('trinity', 'idle', 'not called');
-  }
+  // Trinity: Nexus = Full Stack Agents, Social = TrinityAgents
+  const nexusPurchase = purchases.find(p => (p.team||'').toLowerCase().includes('full stack') || (p.team||'').toLowerCase().includes('nexus'));
+  const socialPurchase = purchases.find(p => (p.team||'').toLowerCase().includes('trinity') || (p.team||'').toLowerCase().includes('social'));
+  if (nexusPurchase) {
+    orchSetAgent('trinity', nexusPurchase.purchased ? 'done' : 'failed', nexusPurchase.purchased ? 'purchased ✓' : 'failed');
+  } else { orchSetAgent('trinity', 'idle', 'standby'); }
+  if (socialPurchase) {
+    orchSetAgent('social', socialPurchase.purchased ? 'done' : 'failed', socialPurchase.purchased ? 'purchased ✓' : 'failed');
+  } else { orchSetAgent('social', 'idle', 'standby'); }
 
   // Update buyer transactions sidebar
   const txBuyer = document.getElementById('txs-buyer');
@@ -522,7 +671,7 @@ function renderOrchestration(data) {
   }
 }
 
-const ORCH_IDS = {exa:'orch-exa', apify:'orch-apify', openai:'orch-openai', nevermined:'orch-nevermined', trinity:'orch-trinity'};
+const ORCH_IDS = {exa:'orch-exa', apify:'orch-apify', openai:'orch-openai', nevermined:'orch-nevermined', trinity:'orch-trinity', social:'orch-social'};
 
 function orchSetAgent(id, status, msg) {
   const boxId = ORCH_IDS[id] || ('orch-agent-' + id);
@@ -539,8 +688,8 @@ function orchSetAgent(id, status, msg) {
 }
 
 function orchSetRunning() {
-  ['exa','apify','openai','nevermined','trinity'].forEach(id => {
-    orchSetAgent(id, 'idle', 'queued...');
+  ['exa','apify','openai','nevermined','trinity','social'].forEach(id => {
+    orchSetAgent(id, 'running', 'queued');
   });
 }
 
@@ -794,6 +943,7 @@ async function sendMessage() {
               }
               // Business strategy result card + live orchestration update
               if (r && typeof r === 'object' && r.goal && r.steps) {
+                lastStrategyData = r; // save for flow view
                 auditCards += renderStrategyCard(r);
                 renderOrchestration(r);
                 // ZeroClick ad — render once in chat, update sidebar
@@ -979,9 +1129,6 @@ async function refreshStats() {
       }).join('') || '<span style="color:var(--dim)">none yet</span>';
     }
 
-    // Coverage
-    const epEl = document.getElementById('ep'); if (epEl) epEl.textContent = b ? (b.services_tracked || 0) : 0;
-    const arEl = document.getElementById('ar'); if (arEl) arEl.textContent = b ? (b.audit_history_count || 0) : 0;
   }
 
   // Seller section — compact
@@ -1000,45 +1147,6 @@ async function refreshStats() {
   }
 }
 
-async function refreshChain() {
-  const chain = await get(S + '/chain');
-  if (!chain) {
-    document.getElementById('ch-burns-feed').innerHTML = '<span style="color:var(--red)">offline</span>';
-    return;
-  }
-  const proto = chain.protocol || {};
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v != null ? v : '\u2014'; };
-  set('ch-mints', proto.totalMints);
-  set('ch-burns', proto.totalBurns);
-  set('ch-cminted', proto.totalCreditsMinted);
-  set('ch-cburned', proto.totalCreditsBurned);
-  set('ch-usdc', proto.totalUSDCVolume != null ? '$' + proto.totalUSDCVolume : '\u2014');
-  set('ch-agreements', proto.totalAgreements);
-
-  // Recent plan burns
-  const burnsFeed = document.getElementById('ch-burns-feed');
-  const burns = chain.recent_burns || [];
-  if (burns.length) {
-    burnsFeed.innerHTML = burns.slice(0, 6).map(b => {
-      const ts = b.blockTimestamp ? new Date(parseInt(b.blockTimestamp) * 1000).toLocaleTimeString() : '';
-      const from = b.from ? b.from.substring(0, 8) + '\u2026' : '';
-      return '<div><span style="color:var(--red)">\u2212' + b.amount + '</span> <span style="color:var(--dim)">' + from + (ts ? ' \xb7 ' + ts : '') + '</span></div>';
-    }).join('');
-  } else {
-    burnsFeed.innerHTML = '<span style="color:var(--dim2)">none yet</span>';
-  }
-
-  // Daily stats
-  const dailyFeed = document.getElementById('ch-daily-feed');
-  const daily = chain.daily || [];
-  if (daily.length) {
-    dailyFeed.innerHTML = daily.slice(0, 5).map(d => {
-      return '<div><span style="color:var(--dim)">' + d.date + '</span> <span style="color:var(--green)">\u2191' + (d.mintCount||0) + '</span> <span style="color:var(--red)">\u2193' + (d.burnCount||0) + '</span></div>';
-    }).join('');
-  } else {
-    dailyFeed.innerHTML = '<span style="color:var(--dim2)">no daily data</span>';
-  }
-}
 
 async function triggerBuyerLoop() {
   const btn = document.getElementById('run-now-btn');
@@ -1055,9 +1163,7 @@ async function triggerBuyerLoop() {
 }
 
 refreshStats();
-refreshChain();
 setInterval(refreshStats, 5000);
-setInterval(refreshChain, 30000);
 input.focus();
 </script>
 </body></html>
