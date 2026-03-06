@@ -20,6 +20,7 @@ from src.config import (
     MARKETPLACE_CSV_URL,
     MODEL_ID,
     NVM_API_KEY,
+    NVM_BUYER_API_KEY,
     NVM_AGENT_ID,
     NVM_PLAN_ID,
     OPENAI_API_KEY,
