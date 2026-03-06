@@ -171,6 +171,21 @@ app.add_api_route("/api/run-now",   api_trigger,   methods=["POST"])
 app.add_api_route("/api/chat",      api_chat,      methods=["POST"])
 
 
+@app.get("/api/keys-status")
+async def keys_status():
+    """Which API keys are configured — used by the dashboard to show live tool readiness."""
+    from src.config import OPENAI_API_KEY, EXA_API_KEY, ZEROCLICK_API_KEY, NVM_API_KEY, NVM_BUYER_API_KEY
+    import os as _os
+    APIFY_API_KEY = _os.environ.get("APIFY_API_KEY", "")
+    return {
+        "openai": bool(OPENAI_API_KEY),
+        "exa": bool(EXA_API_KEY),
+        "zeroclick": bool(ZEROCLICK_API_KEY),
+        "nvm": bool(NVM_API_KEY or NVM_BUYER_API_KEY),
+        "apify": bool(APIFY_API_KEY),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------

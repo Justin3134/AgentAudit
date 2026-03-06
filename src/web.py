@@ -166,25 +166,34 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 .orch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 6px; }
 
 /* ---- Flow view nodes ---- */
+@keyframes flowIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes drawLine { to { stroke-dashoffset: 0; } }
 .flow-node {
   border: 1px solid var(--border); border-radius: 5px;
   padding: 8px 12px; background: #060606; display: inline-block;
   font-size: 11px; position: relative; min-width: 100px; text-align: center;
   transition: border-color 0.3s;
 }
-.flow-node.goal { border-color: var(--orange); background: #120a00; min-width: 180px; font-size: 13px; font-weight: 500; }
+.flow-node.goal { border-color: var(--orange); background: #120a00; min-width: 200px; font-size: 13px; font-weight: 500; }
 .flow-node.search { border-color: #334; background: #05050a; }
 .flow-node.candidate { border-color: var(--border); min-width: 120px; }
 .flow-node.buy { border-color: var(--green); background: #040d04; }
 .flow-node.skip { border-color: var(--red); background: #0d0404; opacity: 0.7; }
 .flow-node.zeroclick { border-color: #1a3a1a; background: #050f05; }
 .flow-node.apify { border-color: #1a1a3a; background: #05050f; }
+.flow-reveal { opacity: 0; animation: flowIn 0.45s ease both; }
 .flow-row { display: flex; gap: 12px; justify-content: center; margin-bottom: 32px; flex-wrap: wrap; }
 .flow-label { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin-bottom: 3px; }
 .flow-score { font-size: 16px; font-weight: 300; margin: 2px 0; }
 .flow-connector { width: 1px; height: 24px; background: var(--border); margin: 0 auto -8px; }
 .flow-line-row { display: flex; justify-content: center; margin-bottom: -8px; position: relative; }
 .flow-tx-hash { font-size: 9px; color: var(--dim2); margin-top: 3px; }
+/* Inline ZeroClick callouts */
+.zc-inline { border-left: 2px solid #1a3a1a; padding: 5px 8px; margin: 5px 0; font-size: 10px; background: #050f05; border-radius: 0 3px 3px 0; }
+.zc-inline-label { font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; color: #2a5a2a; margin-bottom: 2px; }
 .agent-box {
   border: 1px solid var(--border); border-radius: 4px;
   padding: 8px 10px; font-size: 10px; position: relative;
@@ -230,7 +239,10 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 
   <!-- Flow View (hidden by default) -->
   <div id="view-flow" style="display:none;grid-column:1;overflow:auto;padding:24px 32px;background:var(--bg)">
-    <div style="font-size:10px;color:var(--dim);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:20px">Workflow — last strategy run</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="font-size:10px;color:var(--dim);letter-spacing:0.1em;text-transform:uppercase">Workflow — last strategy run</div>
+      <div id="flow-key-status" style="font-size:9px;color:var(--dim2);letter-spacing:0.05em"></div>
+    </div>
     <div id="flow-canvas" style="position:relative;min-height:500px;font-size:11px">
       <div style="color:var(--dim2);padding:40px 0">Run a strategy in Chat to see the workflow here.</div>
     </div>
@@ -315,7 +327,8 @@ function showView(v) {
     btnChat.style.background = 'transparent';
     btnChat.style.color = 'var(--dim)';
     btnChat.style.borderColor = 'var(--dim2)';
-    renderFlowView(lastStrategyData);
+    // Refresh key status then render so "no key" vs "key active" is accurate
+    _loadKeyStatus().then(() => renderFlowView(lastStrategyData));
   } else {
     flow.style.display = 'none';
     chat.style.display = '';
@@ -328,10 +341,37 @@ function showView(v) {
   }
 }
 
-// ─── Flow View — node-link graph with SVG connections ───────────────────────
+// ─── Flow View — live animated node-link graph ──────────────────────────────
+let _keyStatus = {};
+async function _loadKeyStatus() {
+  try {
+    _keyStatus = await fetch(B+'/api/keys-status').then(r=>r.json());
+    const el = document.getElementById('flow-key-status');
+    if (el) {
+      const parts = [
+        'openai', 'exa', 'zeroclick', 'nvm', 'apify'
+      ].map(k => {
+        const ok = _keyStatus[k];
+        return '<span style="color:' + (ok?'var(--green)':'var(--red)') + '">' + k + '</span>';
+      });
+      el.innerHTML = 'Keys: ' + parts.join(' · ');
+    }
+  } catch(e) {}
+}
+_loadKeyStatus();
 
 function _fNode(id, type, content, extraStyle) {
   return '<div class="flow-node ' + type + '" id="fn-' + id + '" style="' + (extraStyle||'') + '">' + content + '</div>';
+}
+
+// Tiny ZeroClick inline callout reusing strategy ad data
+function _zcInline(ad, context) {
+  if (!ad) return '';
+  return '<div class="zc-inline"><div class="zc-inline-label">◉ ZeroClick sponsored</div>' +
+    '<span style="color:var(--dim)">' + e(ad.sponsor||'') + ' — </span>' +
+    '<a href="' + e(ad.click_url||'#') + '" target="_blank" style="color:#3a7a3a;text-decoration:none">' + e((ad.title||'').substring(0,55)) + '</a>' +
+    (context ? '<span style="color:var(--dim2);font-size:9px"> · '+e(context)+'</span>' : '') +
+    '</div>';
 }
 
 function renderFlowView(data) {
@@ -345,6 +385,7 @@ function renderFlowView(data) {
   const apify = data.apify_actors || [];
   const exa = data.exa_research || {};
   const exaHighlights = exa.highlights || [];
+  const exaSearch = exa.search_context || [];
   const allMkt = data.all_marketplace_results || data.candidates || [];
   const purchases = (data.purchases||[]).filter(p => p.purchased);
   const roi = data.roi_analysis || {};
@@ -352,185 +393,260 @@ function renderFlowView(data) {
   const trinityPlan = data.trinity_plan || [];
   const ad = data.zeroclick_ad || null;
 
-  let connections = []; // [{from, to, color}]
+  // Animation delay counter — each section appears progressively
+  let _delay = 0;
+  function nextDelay(step) { const d = _delay; _delay += step; return d; }
 
-  let html = '<svg id="flow-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible"></svg>';
+  let connections = []; // [{from, to, color, delay}]
 
-  // ── Row 0: Goal ──────────────────────────────────────────────────────────────
-  html += '<div style="display:flex;justify-content:center;margin-bottom:40px">';
-  html += _fNode('goal', 'goal', '<div class="flow-label">Business Goal</div><div>' + e(data.goal||'') + '</div>' +
-    (caps.length ? '<div style="margin-top:5px;font-size:10px;color:var(--dim)">needs: ' + caps.map(e).join(' · ') + '</div>' : ''));
-  html += '</div>';
+  // Helper: wrap section in a .flow-reveal div with animation delay
+  function reveal(html, delayMs) {
+    return '<div class="flow-reveal" style="animation-delay:' + delayMs + 'ms">' + html + '</div>';
+  }
 
-  // ── Row 1: Three research branches ───────────────────────────────────────────
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:40px">';
+  let sections = []; // [{html, delay}]
+  function sec(html) { const d = _delay; sections.push({html, d}); }
 
-  // Marketplace column
-  html += '<div>';
-  html += _fNode('mkt', 'search', '<div class="flow-label" style="color:#5577ff">Marketplace Search</div>' +
-    '<div class="flow-score">' + allMkt.length + '</div><div style="color:var(--dim);font-size:10px">agents found</div>');
-  connections.push({from:'goal', to:'mkt', color:'#334'});
-  // Marketplace results
+  // ── Row 0: Goal ─────────────────────────────────────────────────────────────
+  sec('<div style="display:flex;justify-content:center;margin-bottom:40px">' +
+    _fNode('goal', 'goal',
+      '<div class="flow-label">Business Goal</div><div>' + e(data.goal||'') + '</div>' +
+      (caps.length ? '<div style="margin-top:5px;font-size:10px;color:var(--dim)">needs: ' + caps.map(e).join(' · ') + '</div>' : '') +
+      '<div style="margin-top:6px;font-size:9px;color:#4a4a4a">↓ searching marketplace · Exa · Apify in parallel</div>'
+    ) + '</div>');
+  nextDelay(200);
+
+  // ── Row 1: Three search branches (appear together, simulate parallel) ────────
+  const exaOk = exaHighlights.length > 0 || exaSearch.length > 0;
+  const exaStatus = exaOk ? (exaHighlights.length + exaSearch.length) + ' insights'
+    : (_keyStatus.exa ? 'key active — run strategy' : 'no key — add EXA_API_KEY');
+
+  let branchHtml = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:8px">';
+
+  // — Marketplace column —
+  branchHtml += '<div>';
+  branchHtml += _fNode('mkt', 'search',
+    '<div class="flow-label" style="color:#5577ff">Marketplace Search</div>' +
+    '<div class="flow-score">' + allMkt.length + '</div>' +
+    '<div style="color:var(--dim);font-size:10px">agents discovered</div>');
+  connections.push({from:'goal', to:'mkt', color:'#2244aa', delay: 300});
   allMkt.slice(0,4).forEach((m, i) => {
     const mid = 'mkt-'+i;
     const sc = scored.find(s => s.team === m.team);
     const scv = sc ? sc.overall_score : null;
     const col = scv === null ? 'var(--dim)' : (scv >= 0.6 ? 'var(--green)' : scv >= 0.4 ? 'var(--orange)' : 'var(--red)');
-    html += '<div style="height:12px;width:1px;background:var(--border);margin:0 auto -4px"></div>';
-    html += _fNode(mid, 'candidate' + (sc ? '' : ''), 
+    branchHtml += '<div style="height:10px;width:1px;background:#223;margin:2px auto"></div>';
+    branchHtml += _fNode(mid, scv !== null ? 'candidate' : '',
       '<div style="font-weight:500;font-size:11px">' + e(m.team) + '</div>' +
-      (scv !== null ? '<div style="color:' + col + ';font-size:10px">' + scv.toFixed(2) + ' · ' + (sc.roi_decision||'') + '</div>' : '<div style="color:var(--dim2);font-size:9px">' + e((m.price||'')+' '+m.category) + '</div>'),
+      (scv !== null
+        ? '<div style="color:'+col+';font-size:10px">' + scv.toFixed(2) + ' · ' + (sc.roi_decision||'') + '</div>' +
+          (sc.avg_latency_ms ? '<div style="font-size:9px;color:var(--dim2)">'+sc.avg_latency_ms.toFixed(0)+'ms latency</div>' : '')
+        : '<div style="color:var(--dim2);font-size:9px">' + e(m.category||m.price||'') + '</div>'),
       scv !== null ? 'border-color:'+col : '');
-    connections.push({from:'mkt', to:mid, color:'#223'});
+    connections.push({from:'mkt', to:mid, color:'#223', delay: 350 + i*80});
   });
-  html += '</div>';
+  // ZeroClick inline after marketplace — natural market suggestion
+  if (ad) branchHtml += _zcInline(ad, 'market alternative');
+  branchHtml += '</div>';
 
-  // Exa column
-  html += '<div>';
-  const exaOk = exaHighlights.length > 0;
-  html += _fNode('exa', 'search', '<div class="flow-label" style="color:#ff8833">Exa Web Research</div>' +
-    '<div class="flow-score">' + exaHighlights.length + '</div>' +
-    '<div style="color:var(--dim);font-size:10px">' + (exaOk ? 'competitive insights' : 'no key — add EXA_API_KEY') + '</div>');
-  connections.push({from:'goal', to:'exa', color:'#332200'});
-  // Exa highlights
+  // — Exa Research column —
+  branchHtml += '<div>';
+  branchHtml += _fNode('exa', 'search',
+    '<div class="flow-label" style="color:#ff8833">Exa Web Research</div>' +
+    '<div class="flow-score">' + (exaOk ? exaHighlights.length : '—') + '</div>' +
+    '<div style="color:var(--dim);font-size:10px">' + exaStatus + '</div>');
+  connections.push({from:'goal', to:'exa', color:'#5a3300', delay: 300});
   exaHighlights.slice(0,3).forEach((h, i) => {
-    const hid = 'exa-'+i;
-    html += '<div style="height:12px;width:1px;background:var(--border);margin:0 auto -4px"></div>';
-    html += _fNode(hid, 'search', '<div style="color:var(--dim);font-size:10px;line-height:1.4">' + e(String(h).substring(0,80)) + '</div>',
-      'border-color:#332200;background:#080500;min-width:unset');
-    connections.push({from:'exa', to:hid, color:'#332200'});
+    const hid = 'exa-h'+i;
+    branchHtml += '<div style="height:10px;width:1px;background:#443300;margin:2px auto"></div>';
+    branchHtml += _fNode(hid, 'search',
+      '<div style="color:var(--dim);font-size:10px;line-height:1.4;text-align:left">' + e(String(h).substring(0,85)) + '</div>',
+      'border-color:#443300;background:#080500;min-width:unset;text-align:left');
+    connections.push({from:'exa', to:hid, color:'#443300', delay: 400 + i*80});
   });
-  // Competitive analysis
+  // Exa search context links
+  exaSearch.slice(0,2).forEach((r, i) => {
+    const sid = 'exa-s'+i;
+    branchHtml += '<div style="height:10px;width:1px;background:#443300;margin:2px auto"></div>';
+    branchHtml += _fNode(sid, 'search',
+      '<div style="font-weight:500;font-size:10px;text-align:left">' + e((r.title||'').substring(0,45)) + '</div>' +
+      '<div style="color:var(--dim2);font-size:9px;text-align:left">' + e((r.url||'').replace('https://','').substring(0,40)) + '</div>',
+      'border-color:#332200;background:#060400;min-width:unset');
+    connections.push({from:'exa', to:sid, color:'#332200', delay: 450 + i*80});
+  });
   if (data.competitive_analysis) {
-    html += '<div style="height:12px;width:1px;background:#332200;margin:0 auto -4px"></div>';
-    html += _fNode('exa-comp', 'search',
+    branchHtml += '<div style="height:10px;width:1px;background:#443300;margin:2px auto"></div>';
+    branchHtml += _fNode('exa-comp', 'search',
       '<div class="flow-label" style="color:#ff8833">Comparative Analysis</div>' +
-      '<div style="color:var(--dim);font-size:10px;line-height:1.5">' + e(data.competitive_analysis.substring(0,160)) + '</div>',
-      'border-color:#443300;background:#080500');
-    connections.push({from:'exa', to:'exa-comp', color:'#443300'});
+      '<div style="color:var(--dim);font-size:10px;line-height:1.5;text-align:left">' + e(data.competitive_analysis.substring(0,160)) + '</div>',
+      'border-color:#554400;background:#080500;text-align:left');
+    connections.push({from:'exa', to:'exa-comp', color:'#554400', delay: 520});
+    // ZeroClick inline after competitive analysis — "sponsored alternative"
+    if (ad) branchHtml += _zcInline(ad, 'competitive alternative');
   }
-  html += '</div>';
+  branchHtml += '</div>';
 
-  // Apify column
-  html += '<div>';
-  html += _fNode('apify', 'apify', '<div class="flow-label" style="color:#6644ff">Apify Store</div>' +
+  // — Apify column —
+  branchHtml += '<div>';
+  branchHtml += _fNode('apify', 'apify',
+    '<div class="flow-label" style="color:#6644ff">Apify Store</div>' +
     '<div class="flow-score">' + apify.length + '</div>' +
-    '<div style="color:var(--dim);font-size:10px">' + (apify.length ? 'actors found' : 'no results') + '</div>');
-  connections.push({from:'goal', to:'apify', color:'#221133'});
-  apify.slice(0,3).forEach((a, i) => {
+    '<div style="color:var(--dim);font-size:10px">' + (apify.length ? 'automation actors' : (_keyStatus.apify ? 'no results' : 'no key')) + '</div>');
+  connections.push({from:'goal', to:'apify', color:'#331166', delay: 300});
+  apify.slice(0,4).forEach((a, i) => {
     const aid = 'apify-'+i;
     const url = a.url || a.apify_url || '';
-    html += '<div style="height:12px;width:1px;background:var(--border);margin:0 auto -4px"></div>';
-    html += _fNode(aid, 'apify',
-      '<div style="font-weight:500;font-size:10px">' + e(a.name||'Actor') + '</div>' +
-      '<div style="color:var(--dim);font-size:9px;margin:2px 0">' + e((a.description||'').substring(0,55)) + '</div>' +
+    branchHtml += '<div style="height:10px;width:1px;background:#221133;margin:2px auto"></div>';
+    branchHtml += _fNode(aid, 'apify',
+      '<div style="font-weight:500;font-size:10px;text-align:left">' + e(a.name||'Actor') + '</div>' +
+      '<div style="color:var(--dim);font-size:9px;margin:2px 0;text-align:left">' + e((a.description||'').substring(0,50)) + '</div>' +
       (url ? '<a href="'+e(url)+'" target="_blank" style="font-size:9px;color:#6644ff;text-decoration:none">open in Apify →</a>' : ''),
       'border-color:#221133;background:#040309;min-width:unset');
-    connections.push({from:'apify', to:aid, color:'#221133'});
+    connections.push({from:'apify', to:aid, color:'#221133', delay: 360 + i*80});
   });
-  html += '</div>';
+  branchHtml += '</div>';
 
-  html += '</div>'; // end grid
+  branchHtml += '</div>'; // end grid
+  sec(branchHtml);
+  nextDelay(150);
 
-  // ── Row 2: Purchases ─────────────────────────────────────────────────────────
+  // ── Row 2: Audit convergence ─────────────────────────────────────────────────
+  if (scored.length > 0) {
+    let auditHtml = '<div style="margin:16px 0 8px;text-align:center"><div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);border-top:1px solid var(--border);padding-top:20px;display:inline-block;padding:20px 30px 0">Audit — real HTTP probes + OpenAI scoring</div></div>';
+    auditHtml += '<div style="display:flex;gap:12px;justify-content:center;margin-bottom:12px;flex-wrap:wrap">';
+    scored.forEach((s, i) => {
+      const sc = s.overall_score || 0;
+      const col = sc >= 0.6 ? 'var(--green)' : sc >= 0.4 ? 'var(--orange)' : 'var(--red)';
+      const sid = 'aud-'+i;
+      connections.push({from: 'mkt-'+Math.min(i, allMkt.length-1), to: sid, color: col==='var(--green)'?'#0a2a0a':'#2a1a00', delay: 600+i*80});
+      auditHtml += _fNode(sid, 'candidate',
+        '<div style="font-weight:500;font-size:11px">' + e(s.team||'') + '</div>' +
+        '<div style="color:'+col+';font-size:18px;font-weight:300;margin:3px 0">' + sc.toFixed(2) + '</div>' +
+        '<div style="color:'+col+';font-size:9px;letter-spacing:0.06em">' + (s.roi_decision||s.recommendation||'') + '</div>' +
+        (s.avg_latency_ms ? '<div style="font-size:9px;color:var(--dim2);margin-top:2px">'+s.avg_latency_ms.toFixed(0)+'ms · quality '+(s.quality_score||0).toFixed(2)+(s.quality_score===0.5?' (est)':'')+' · price '+(s.price_score||0).toFixed(2)+'</div>' : ''),
+        'border-color:'+col+';min-width:130px');
+    });
+    auditHtml += '</div>';
+    sec(auditHtml);
+    nextDelay(120);
+  }
+
+  // ── Row 3: Purchases ─────────────────────────────────────────────────────────
   if (purchases.length > 0) {
-    html += '<div style="display:flex;justify-content:center;margin-bottom:8px">';
-    html += '<div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);border-top:1px solid var(--border);width:80%;padding-top:24px;text-align:center">Nevermined order_plan — on-chain purchases</div>';
-    html += '</div>';
-    html += '<div style="display:flex;gap:12px;justify-content:center;margin-bottom:40px">';
+    let buyHtml = '<div style="margin:8px 0;text-align:center"><div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--green);display:inline-block;padding:0 20px">↓ Nevermined order_plan — blockchain transactions</div></div>';
+    buyHtml += '<div style="display:flex;gap:12px;justify-content:center;margin-bottom:16px;flex-wrap:wrap">';
     purchases.forEach((p, i) => {
       const tx = (p.tx_hash||'').substring(0,14);
       const pid = 'buy-'+i;
-      connections.push({from: scored.length > 0 ? 'mkt-0' : 'mkt', to: pid, color:'#0a2a0a'});
-      html += _fNode(pid, 'buy',
-        '<div class="flow-label">' + e(p.team||'') + (p.repeat_purchase ? ' <span style="color:var(--orange)">REPEAT</span>' : ' <span style="color:var(--green)">NEW</span>') + '</div>' +
-        '<div style="color:var(--green);font-weight:500;font-size:13px;margin:3px 0">order_plan ✓</div>' +
+      connections.push({from:'aud-'+Math.min(i, scored.length-1), to:pid, color:'#0a2a0a', delay:750+i*80});
+      buyHtml += _fNode(pid, 'buy',
+        '<div class="flow-label">' + e(p.team||'') +
+          (p.repeat_purchase ? ' <span style="color:var(--orange)">REPEAT</span>' : ' <span style="color:var(--green)">NEW</span>') + '</div>' +
+        '<div style="color:var(--green);font-weight:500;font-size:14px;margin:4px 0">order_plan ✓</div>' +
         '<div style="color:var(--dim);font-size:9px">roi: ' + e(p.roi_decision||'BUY') + '</div>' +
-        (tx ? '<div class="flow-tx-hash">tx: ' + e(tx) + '…</div>' : '') +
-        (p.price_per_credit ? '<div style="font-size:9px;color:var(--dim2)">$' + p.price_per_credit + '/credit</div>' : ''));
+        (tx ? '<div class="flow-tx-hash">tx: ' + e(tx) + '…</div>' : ''));
     });
-    html += '</div>';
+    buyHtml += '</div>';
+    sec(buyHtml);
+    nextDelay(120);
   }
 
-  // ── ZeroClick ────────────────────────────────────────────────────────────────
+  // ── ZeroClick main node (after purchases — "what to do next") ────────────────
   if (ad) {
-    html += '<div style="display:flex;justify-content:center;margin-bottom:40px">';
-    const adId = 'zc-ad-node';
-    purchases.length && connections.push({from:'buy-0', to:adId, color:'#1a3a1a'});
-    html += _fNode(adId, 'zeroclick',
-      '<div class="flow-label" style="color:var(--green)">◉ ZeroClick — AI-Native Contextual Ad</div>' +
+    let zcHtml = '<div style="display:flex;justify-content:center;margin:12px 0 24px">';
+    const adId = 'zc-main';
+    if (purchases.length > 0) connections.push({from:'buy-0', to:adId, color:'#1a3a1a', delay:900});
+    zcHtml += _fNode(adId, 'zeroclick',
+      '<div class="flow-label" style="color:var(--green)">◉ ZeroClick — AI-native contextual recommendation</div>' +
       '<div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;margin-top:6px">' +
         '<div>' +
-          '<div style="font-weight:500;margin-bottom:3px">' + e(ad.title||ad.sponsor||'') + '</div>' +
-          '<div style="color:var(--dim);font-size:10px;line-height:1.4">' + e((ad.message||'').substring(0,130)) + '</div>' +
+          '<div style="font-weight:500;margin-bottom:3px;text-align:left">' + e(ad.title||ad.sponsor||'') + '</div>' +
+          '<div style="color:var(--dim);font-size:10px;line-height:1.4;text-align:left">' + e((ad.message||'').substring(0,130)) + '</div>' +
         '</div>' +
         '<a href="' + e(ad.click_url||'#') + '" target="_blank" style="font-size:10px;color:var(--green);text-decoration:none;border:1px solid #1a3a1a;padding:5px 10px;border-radius:3px;white-space:nowrap">' + e(ad.cta||'Learn more') + ' →</a>' +
       '</div>',
-      'min-width:450px;text-align:left');
-    html += '</div>';
+      'min-width:440px;text-align:left');
+    zcHtml += '</div>';
+    sec(zcHtml);
+    nextDelay(120);
   }
 
   // ── Trinity Business Plan ────────────────────────────────────────────────────
   if (trinityPlan.length > 0) {
-    html += '<div style="margin-bottom:8px;text-align:center">';
-    html += '<div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--green);border-top:1px solid #1a3a1a;padding-top:24px;display:inline-block;padding-left:20px;padding-right:20px">▲ Trinity Business Plan — autonomous agent fleet</div>';
-    html += '</div>';
-    html += '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:24px">';
+    let tHtml = '<div style="border-top:1px solid #1a3a1a;padding-top:24px;margin-bottom:8px;text-align:center">';
+    tHtml += '<div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--green);margin-bottom:12px">▲ AbilityAI Trinity — autonomous agent fleet generated for your goal</div>';
+    tHtml += '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">';
     const tmplColors = {cornelius:'#334499', ruby:'#993344', outbound:'#449933', webmaster:'#996633'};
     trinityPlan.forEach((ag, i) => {
-      const col = tmplColors[ag.template] || '#333355';
-      html += '<div style="border:1px solid ' + col + ';border-radius:5px;padding:10px 14px;background:#050508;min-width:130px;max-width:160px">';
-      html += '<div style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:' + col + ';margin-bottom:4px">' + e(ag.template||'agent') + '</div>';
-      html += '<div style="font-weight:500;font-size:12px;margin-bottom:3px">' + e(ag.name||'') + '</div>';
-      html += '<div style="font-size:10px;color:var(--dim);margin-bottom:5px">' + e(ag.role||'') + '</div>';
-      html += '<div style="font-size:10px;color:var(--dim2);line-height:1.4">' + e((ag.task||'').substring(0,70)) + '</div>';
-      html += '<div style="margin-top:6px;width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block"></div><span style="font-size:9px;color:var(--green);margin-left:4px">ready</span>';
-      html += '</div>';
+      const col = tmplColors[(ag.template||'').toLowerCase()] || '#444466';
+      tHtml += '<div class="flow-reveal" style="animation-delay:' + (nextDelay(100)) + 'ms;border:1px solid '+col+';border-radius:5px;padding:10px 14px;background:#050508;min-width:135px;max-width:165px">';
+      tHtml += '<div style="font-size:8px;letter-spacing:0.06em;text-transform:uppercase;color:'+col+';margin-bottom:4px">' + e(ag.template||'agent') + '</div>';
+      tHtml += '<div style="font-weight:500;font-size:12px;margin-bottom:3px">' + e(ag.name||'') + '</div>';
+      tHtml += '<div style="font-size:10px;color:var(--dim);margin-bottom:5px">' + e(ag.role||'') + '</div>';
+      tHtml += '<div style="font-size:10px;color:var(--dim2);line-height:1.4">' + e((ag.task||'').substring(0,65)) + '</div>';
+      tHtml += '<div style="margin-top:6px"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--green);vertical-align:middle"></span><span style="font-size:9px;color:var(--green);margin-left:4px">ready to deploy</span></div>';
+      tHtml += '</div>';
     });
-    html += '</div>';
+    tHtml += '</div></div>';
+    sec(tHtml);
   }
 
   // ROI summary
   if (roi.roi_rationale) {
-    html += '<div style="border:1px solid var(--border);border-radius:5px;padding:12px 16px;font-size:11px;margin-bottom:24px">';
-    html += '<div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);margin-bottom:6px">ROI Summary</div>';
-    html += '<div style="color:var(--dim)">' + e(roi.roi_rationale) + '</div>';
+    let rHtml = '<div style="border:1px solid var(--border);border-radius:5px;padding:10px 14px;font-size:11px;margin:12px 0">';
+    rHtml += '<div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);margin-bottom:4px">ROI Summary</div>';
+    rHtml += '<div style="color:var(--dim)">' + e(roi.roi_rationale) + '</div>';
     if (roi.teams_purchased_from && roi.teams_purchased_from.length) {
-      html += '<div style="margin-top:6px;color:var(--green);font-size:10px">Purchased from: ' + roi.teams_purchased_from.map(e).join(', ') + '</div>';
+      rHtml += '<div style="margin-top:4px;color:var(--green);font-size:10px">Purchased from: ' + roi.teams_purchased_from.map(e).join(', ') + '</div>';
     }
-    html += '</div>';
+    rHtml += '</div>';
+    sec(rHtml);
   }
 
-  canvas.innerHTML = html;
+  // ── Render with staggered animation ─────────────────────────────────────────
+  let fullHtml = '<svg id="flow-svg" style="position:absolute;top:0;left:0;pointer-events:none;overflow:visible"></svg>';
+  sections.forEach(({html, d}) => {
+    fullHtml += '<div class="flow-reveal" style="animation-delay:' + d + 'ms">' + html + '</div>';
+  });
+  canvas.innerHTML = fullHtml;
 
-  // ── Draw SVG connection lines AFTER DOM update ────────────────────────────
-  requestAnimationFrame(() => {
+  // ── Draw animated SVG connection lines after DOM settles ─────────────────────
+  requestAnimationFrame(() => setTimeout(() => {
     const svg = document.getElementById('flow-svg');
     if (!svg) return;
-    const canvasRect = canvas.getBoundingClientRect();
-    svg.setAttribute('style', 'position:absolute;top:0;left:0;width:'+canvas.scrollWidth+'px;height:'+canvas.scrollHeight+'px;pointer-events:none;overflow:visible');
+    svg.setAttribute('width', canvas.scrollWidth);
+    svg.setAttribute('height', canvas.scrollHeight);
+    svg.style.width = canvas.scrollWidth + 'px';
+    svg.style.height = canvas.scrollHeight + 'px';
+    const cR = canvas.getBoundingClientRect();
 
-    connections.forEach(({from, to, color}) => {
+    connections.forEach(({from, to, color, delay: lineDelay}) => {
       const fEl = document.getElementById('fn-'+from);
       const tEl = document.getElementById('fn-'+to);
       if (!fEl || !tEl) return;
       const fR = fEl.getBoundingClientRect();
       const tR = tEl.getBoundingClientRect();
-      const x1 = fR.left + fR.width/2 - canvasRect.left;
-      const y1 = fR.bottom - canvasRect.top;
-      const x2 = tR.left + tR.width/2 - canvasRect.left;
-      const y2 = tR.top - canvasRect.top;
-      const dy = Math.abs(y2-y1);
-      const path = `M${x1},${y1} C${x1},${y1+dy*0.5} ${x2},${y2-dy*0.5} ${x2},${y2}`;
-      const p = document.createElementNS('http://www.w3.org/2000/svg','path');
-      p.setAttribute('d', path);
-      p.setAttribute('stroke', color||'var(--border)');
-      p.setAttribute('stroke-width', '1');
+      const x1 = fR.left + fR.width/2 - cR.left;
+      const y1 = fR.bottom - cR.top;
+      const x2 = tR.left + tR.width/2 - cR.left;
+      const y2 = tR.top - cR.top;
+      const dy = Math.abs(y2 - y1);
+      const d = `M${x1},${y1} C${x1},${y1+dy*0.45} ${x2},${y2-dy*0.45} ${x2},${y2}`;
+      const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p.setAttribute('d', d);
       p.setAttribute('fill', 'none');
-      p.setAttribute('opacity', '0.7');
+      p.setAttribute('stroke', color || 'var(--border)');
+      p.setAttribute('stroke-width', '1');
+      p.setAttribute('opacity', '0.6');
       svg.appendChild(p);
+      // Animate the line drawing
+      const len = p.getTotalLength();
+      p.style.strokeDasharray = len;
+      p.style.strokeDashoffset = len;
+      p.style.transition = `stroke-dashoffset 0.5s ease ${(lineDelay||300)}ms`;
+      requestAnimationFrame(() => requestAnimationFrame(() => { p.style.strokeDashoffset = '0'; }));
     });
-  });
+  }, 100));
 }
 
 async function get(u) {
